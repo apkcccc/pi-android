@@ -162,22 +162,15 @@ import app.pi.ui.blocks.TranscriptRowAnchor
 import app.pi.ui.chat.BashPanel
 import app.pi.ui.chat.ChatChip
 import app.pi.ui.chat.ComposerRoute
-import app.pi.ui.chat.ContextSheet
-import app.pi.ui.chat.ForkPickerSheet
 import app.pi.ui.chat.MentionPalette
-import app.pi.ui.chat.ModelPickerSheet
 import app.pi.ui.chat.ChatAction
 import app.pi.ui.chat.PiFileMentions
 import app.pi.ui.chat.PiSlashCommand
-import app.pi.ui.chat.RenameSessionDialog
 import app.pi.ui.chat.SessionExportDelivery
-import app.pi.ui.chat.SessionStatsSheet
-import app.pi.ui.chat.SessionToolsSheet
 import app.pi.ui.chat.SlashPalette
 import app.pi.ui.chat.TailFollow
 import app.pi.ui.chat.TailSnapshot
 import app.pi.ui.chat.TailViewport
-import app.pi.ui.chat.ThinkingPickerSheet
 import app.pi.ui.chat.thinkingLabelOf
 import app.pi.ui.chat.mayLoadEarlier
 import app.pi.ui.chat.mergeRestoredQueue
@@ -306,9 +299,6 @@ fun ChatScreen(
         onOpenSettings = onOpenSettings,
     )
 }
-
-/** Which bottom sheet the chat screen has open, if any. */
-private enum class ChatSheet { Model, Thinking, Tools, Stats, Context, Fork, Rename }
 
 /**
  * 对话页顶栏的图标动作是 [ChatTopBarAction]（48dp 热区 / 24dp 字形），不是别处用的
@@ -2806,84 +2796,7 @@ private fun ChatBody(
         }
     }
 
-    when (sheet) {
-        ChatSheet.Model -> ModelPickerSheet(
-            models = state.models,
-            current = state.meta.model,
-            busy = state.busy != null,
-            onPick = { model ->
-                session.setModel(model)
-                sheet = null
-            },
-            onRefresh = { session.refreshModels() },
-            onDismiss = { sheet = null },
-        )
-
-        ChatSheet.Thinking -> ThinkingPickerSheet(
-            levels = state.meta.thinkingLevels,
-            current = state.meta.thinkingLevel,
-            onPick = { session.setThinkingLevel(it) },
-            onDismiss = { sheet = null },
-        )
-
-        ChatSheet.Tools -> SessionToolsSheet(
-            state = state,
-            onSteeringMode = { session.setSteeringMode(it) },
-            onFollowUpMode = { session.setFollowUpMode(it) },
-            onAutoCompaction = { session.setAutoCompaction(it) },
-            onAutoRetry = { session.setAutoRetry(it) },
-            onAbortRetry = { session.abortRetry() },
-            onCompact = {
-                session.compact()
-                sheet = null
-            },
-            onStats = {
-                session.refreshStats()
-                sheet = ChatSheet.Stats
-            },
-            onTree = {
-                // Navigation refreshes the tree — see the `/tree` arm in `pick`.
-                session.requestNav(NavRequest.SessionTree)
-                sheet = null
-            },
-            onFork = {
-                session.refreshForkMessages()
-                sheet = ChatSheet.Fork
-            },
-            onClone = {
-                session.cloneSession()
-                sheet = null
-            },
-            onRename = { sheet = ChatSheet.Rename },
-            onExport = {
-                session.exportSession()
-                sheet = null
-            },
-            onCopyLast = { copyLastAssistant(session, context) },
-            onDismiss = { sheet = null },
-        )
-
-        ChatSheet.Stats -> SessionStatsSheet(state = state, onDismiss = { sheet = null })
-
-        ChatSheet.Context -> ContextSheet(state = state, onDismiss = { sheet = null })
-
-        ChatSheet.Fork -> ForkPickerSheet(
-            messages = state.forkMessages,
-            onPick = { entryId -> session.forkFrom(entryId) },
-            onDismiss = { sheet = null },
-        )
-
-        ChatSheet.Rename -> RenameSessionDialog(
-            initial = state.meta.sessionName,
-            onConfirm = { name ->
-                session.renameSession(name)
-                sheet = null
-            },
-            onDismiss = { sheet = null },
-        )
-
-        null -> Unit
-    }
+    ChatSheetHost(sheet = sheet, onSheet = { sheet = it }, state = state, session = session)
 
     // Hosted here, at the top of the screen's own tree, for the same reason the
     // sheets are: the tap can come from any block, and the surface that opens must
@@ -3466,14 +3379,6 @@ private sealed interface WorkspaceCopy {
 
     /** The workspace could not be created, or the copy failed — disk full, read-only. */
     data object WriteFailed : WorkspaceCopy
-}
-
-/** `get_last_assistant_text`, then the system clipboard; this is pi's `/copy`. */
-private fun copyLastAssistant(session: PiSessionViewModel, context: Context) {
-    session.copyLastAssistantText { text ->
-        val clipboard = context.getSystemService(ClipboardManager::class.java)
-        clipboard?.setPrimaryClip(ClipData.newPlainText("pi", text))
-    }
 }
 
 /**

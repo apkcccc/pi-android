@@ -2280,184 +2280,17 @@ private fun ChatBody(
                     .windowInsetsPadding(dockInsets),
             ) {
 
-        // 输入框上方的持久卡组：整组量一次高度，交给列表的底边留白。
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .onSizeChanged { aboveComposerHeightPx = it.height },
-        ) {
-        // 压缩在跑：pi 的终端里有「Compacting… (esc to cancel)」，这里同样给一张带中止的卡，
-        // 不用翻到设置页（`session.abortCompaction`）。
-        if (state.meta.compacting) {
-            StatusActionRow(
-                text = "正在压缩上下文…",
-                actionLabel = "中止",
-                onAction = { session.abortCompaction() },
-            )
-        }
-        if (state.queueSteering > 0 || state.queueFollowUp > 0) {
-            QueueRow(
-                steering = state.queueSteering,
-                followUp = state.queueFollowUp,
-                // The texts come from the same `queue_update` that wrote the counts
-                // (`PiSessionViewModel`'s `is PiEvent.QueueUpdate` arm), so the chips
-                // and the lines can never disagree about how many are waiting.
-                steeringTexts = state.queueSteeringTexts,
-                followUpTexts = state.queueFollowUpTexts,
-                // pi's `app.message.dequeue` (`alt+up`): the queue comes back to the
-                // editor and **the turn keeps running** (`interactive-mode.js:3684-3693`
-                // → `:3891-3910` with no `abort`). Stop is the other half — it drains
-                // and aborts — and stays on the send button.
-                onRestore = {
-                    session.restoreQueue { restored -> draft = mergeRestoredQueue(restored, draft) }
-                },
-            )
-        }
-
-        // A finished export is a file the user cannot otherwise open: it lives in
-        // this app's private workspace. The row is the delivery, and it is the
-        // reason `exportSession` publishes `state.exported` at all.
-        val exported = state.exported
-        if (exported != null) {
-            ExportDeliveryRow(
-                exported = exported,
-                onSave = {
-                    exportScope.launch {
-                        val result = withContext(Dispatchers.IO) {
-                            SessionExportDelivery.saveToDownloads(context, exported)
-                        }
-                        session.notifyUser(result.sentence, warning = result.warning)
-                    }
-                },
-                onShare = {
-                    exportScope.launch {
-                        val result = withContext(Dispatchers.IO) {
-                            SessionExportDelivery.share(context, exported)
-                        }
-                        session.notifyUser(result.sentence, warning = result.warning)
-                    }
-                },
-                onDismiss = { session.dismissExport() },
-            )
-        }
-
-        ExtensionStatusStrip(statuses = state.ext.statuses, editorTakeover = state.ext.editorTakeover)
-
-        ExtensionWidgetStack(
-            // Remembered on the widget list, which only changes when an extension
-            // pushes one: the filter used to allocate a new list on every recomposition
-            // of this screen, i.e. once per streamed token, for an answer that had not
-            // changed. `remember` rather than a cached field because the placement is a
-            // property of the widget, not of this screen.
-            widgets = remember(state.ext.widgets) {
-                state.ext.widgets.filter { it.placement != PLACEMENT_BELOW }
-            },
-            onColumns = session::setPanelColumns,
+        ChatDockCards(
+            state = state,
+            session = session,
+            draft = draft,
+            onDraft = { draft = it },
+            attachments = attachments,
+            onAttachments = { attachments = it },
+            mentionPrefix = mentionPrefix,
+            onPickCommand = { command, args -> pick(command, args) },
+            onAboveHeight = { aboveComposerHeightPx = it },
         )
-
-        state.bash?.let { bashRun ->
-            BashPanel(
-                run = bashRun,
-                onAbort = { session.abortBash() },
-                onDismiss = { session.dismissBash() },
-                modifier = Modifier.padding(horizontal = PiSpacing.composerPageMargin, vertical = 4.dp),
-            )
-        }
-        }
-
-        // pi opens its autocomplete as soon as the line starts with `/` and closes
-        // it once the command name is complete (its `CombinedAutocompleteProvider`
-        // completes the first token only). The same rule keeps this list from
-        // covering the transcript while arguments are being typed.
-        // `commandsLoaded` gates the panel: before the first `get_commands` answer
-        // the list is empty for a reason that has nothing to do with what the user
-        // typed, so rendering here would flash the panel's "nothing here" state for
-        // one frame every time `/` opens. Nothing is shown until the list it would
-        // draw is real.
-        //
-        // The panel's own empty branch (`ui/chat/SlashPalette.kt`) is only *half*
-        // unreachable, and that half is why this is a gate rather than a deletion:
-        // `piCommandPalette` always returns `builtins + fromPi`
-        // (`ui/chat/PiSlashCommands.kt:285`), so with a blank query the list can
-        // never be empty and 「没有可用命令」 never renders — but a query nothing
-        // matches renders 「没有匹配「…」的命令」 from the same branch, which is a
-        // real state a user reaches by typing. Deleting the branch would delete that
-        // state too.
-        val paletteQuery = paletteQueryOf(draft)
-        if (paletteQuery != null && state.commandsLoaded) {
-            SlashPalette(
-                commands = state.commands,
-                query = paletteQuery,
-                onPick = { command ->
-                    // A tap is pi's Enter-on-a-suggestion: the editor applies the
-                    // completion and then falls through to submit
-                    // (`packages/tui/src/components/editor.ts:784-802`,
-                    // `CombinedAutocompleteProvider.applyCompletion` inserts
-                    // `/name `), so selecting a command runs it. The exception is
-                    // a command pi itself marks as argument-taking
-                    // (`argumentHint`, which only the built-ins have): there the
-                    // name is completed and left in the composer, which is pi's Tab
-                    // behaviour, because submitting `/login` with no provider is
-                    // never what the user meant.
-                    //
-                    // An argument-taking command leaves its name in the composer
-                    // (pi's Tab behaviour). The two exceptions that used to be here —
-                    // `/model` and `/thinking`, whose argument the app picked itself —
-                    // are gone with their rows: they are no longer in this palette at
-                    // all, so the exception set is empty rather than wrong.
-                    if (command.argumentHint != null) {
-                        draft = "${command.invocation} "
-                    } else {
-                        draft = ""
-                        pick(command, "")
-                    }
-                },
-                modifier = Modifier.padding(horizontal = PiSpacing.pageHorizontal, vertical = 4.dp),
-            )
-        }
-
-        // The `@` mention list, next to the `/` palette and under the same two
-        // rules: it belongs to what the composer holds right now (`mentions.query`
-        // is the prefix the answer was computed for, so a late answer for an older
-        // keystroke cannot appear), and **it is not drawn when there is nothing to
-        // offer** — pi's autocomplete returns no suggestions at all in that case
-        // (`packages/tui/src/autocomplete.ts:305`), it does not show an empty popup.
-        //
-        // A tap inserts and does not send: pi's `@` branch of `applyCompletion`
-        // accepts the completion and stops, while only the `/` branch falls through
-        // to submitting (`packages/tui/src/components/editor.ts:784-802`). This
-        // app has no Enter-to-send for the composer to collide with, so a tap is
-        // the whole gesture.
-        val mentions = state.mentions
-        if (mentionPrefix != null && mentions != null && mentions.query == mentionPrefix && mentions.items.isNotEmpty()) {
-            val prefix = mentionPrefix
-            MentionPalette(
-                candidates = mentions.items,
-                onPick = { item -> draft = PiFileMentions.apply(draft, prefix, item) },
-                modifier = Modifier.padding(horizontal = PiSpacing.pageHorizontal, vertical = 4.dp),
-            )
-        }
-
-        if (attachments.isNotEmpty()) {
-            // 一条消息能带的图片没有张数上限（只受合计体积限制），所以这一排要能横向滑。
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(androidx.compose.foundation.rememberScrollState())
-                    .padding(horizontal = PiSpacing.composerPageMargin, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                attachments.forEachIndexed { index, image ->
-                    AttachmentThumb(
-                        image = image,
-                        index = index,
-                        onRemove = {
-                            attachments = attachments.filterIndexed { i, _ -> i != index }
-                        },
-                    )
-                }
-            }
-        }
 
         // 悬浮输入框本体：左右 12、底 8。`onSizeChanged` 量的是 Composer 自己的高度
         // （不含左右/底部 padding），列表的底边留白用它换算。
@@ -2660,7 +2493,7 @@ private fun ChatBody(
  * draft starts with `/` and no space has been typed yet. Returns the query, or
  * null when the palette should be hidden.
  */
-private fun paletteQueryOf(draft: String): String? {
+internal fun paletteQueryOf(draft: String): String? {
     val trimmed = draft.trimStart()
     if (!trimmed.startsWith("/")) return null
     if (trimmed.contains(' ')) return null
@@ -3338,7 +3171,7 @@ private const val PENDING_MESSAGE_LINES = 2
  */
 /** 输入框上方的一行状态卡：一句话 + 一个文字动作。队列行、压缩中止共用同一套外观。 */
 @Composable
-private fun StatusActionRow(text: String, actionLabel: String, onAction: () -> Unit) {
+internal fun StatusActionRow(text: String, actionLabel: String, onAction: () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -3370,7 +3203,7 @@ private fun StatusActionRow(text: String, actionLabel: String, onAction: () -> U
 }
 
 @Composable
-private fun QueueRow(
+internal fun QueueRow(
     steering: Int,
     followUp: Int,
     steeringTexts: List<String>,
@@ -3485,7 +3318,7 @@ private fun QueueChip(glyph: String, tone: Color, text: String) {
  * only location the app could print is one the user cannot open.
  */
 @Composable
-private fun ExportDeliveryRow(
+internal fun ExportDeliveryRow(
     exported: ExportedSession,
     onSave: () -> Unit,
     onShare: () -> Unit,
@@ -4240,7 +4073,7 @@ private fun ThinkingLevelButton(level: String, onClick: () -> Unit, onLongClick:
 private val ATTACHMENT_THUMB_SIZE = 48.dp
 
 @Composable
-private fun AttachmentThumb(
+internal fun AttachmentThumb(
     image: PiImage,
     index: Int,
     onRemove: () -> Unit,

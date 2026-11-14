@@ -22,7 +22,7 @@ export default function probe(pi) {
       return { render: (w) => [theme.fg("accent", `call q=${args?.q} w=${w} n=${ctx.state.calls}`)] };
     },
     renderResult: (result, options, theme, ctx) => ({
-      render: () => [`result expanded=${options.expanded} err=${ctx.isError} n=${ctx.state.calls}`, String(result?.content?.[0]?.text)],
+      render: () => [`result expanded=${options.expanded} err=${ctx.isError} n=${ctx.state.calls}`, String(result?.content?.[0]?.text), `details=${JSON.stringify(result?.details)}`],
     }),
   });
 

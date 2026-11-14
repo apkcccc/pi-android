@@ -73,12 +73,25 @@ fun HookMessageBlock(
                     if (collapsible) ExpandLabel(expanded)
                 }
                 if (renderedLines != null) {
-                    Column(
-                        modifier = Modifier
-                            .padding(top = PiSpacing.tiny)
-                            .horizontalScroll(rememberScrollState()),
-                    ) {
-                        renderedLines.forEach { app.pi.ui.extension.PanelLine(it, wrap = false) }
+                    // 折叠只给预览：不少扩展的消息渲染器不看 `expanded`，宿主怎么问都吐全量，
+                    // 所以在这里裁剪，卡片才收得起来（工具卡同理，见 `ToolCallBlock`）。
+                    val shown = if (expanded || renderedLines.size <= COLLAPSED_RENDER_LINES) {
+                        renderedLines
+                    } else {
+                        renderedLines.take(COLLAPSED_RENDER_LINES)
+                    }
+                    Column(Modifier.padding(top = PiSpacing.tiny)) {
+                        Column(Modifier.horizontalScroll(rememberScrollState())) {
+                            shown.forEach { app.pi.ui.extension.PanelLine(it, wrap = false) }
+                        }
+                        val hidden = renderedLines.size - shown.size
+                        if (hidden > 0) {
+                            Text(
+                                text = "… 还有 $hidden 行，点卡片展开",
+                                style = PiTheme.text.meta,
+                                color = palette.muted,
+                            )
+                        }
                     }
                 } else if (expanded || !collapsible) {
                 // Expanded (or short enough that there is nothing to collapse):
@@ -117,3 +130,6 @@ fun HookMessageBlock(
 
 /** The collapsed preview length this block already used for a long hook message. */
 private const val COLLAPSED_MESSAGE_LINES = 4
+
+/** 扩展渲染器给的消息，折叠态最多画几行。 */
+private const val COLLAPSED_RENDER_LINES = 8

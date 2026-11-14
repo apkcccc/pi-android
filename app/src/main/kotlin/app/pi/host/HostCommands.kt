@@ -218,14 +218,18 @@ class HostCommands(
         isPartial: Boolean,
         durationMs: Long?,
         width: Int,
+        details: JsonElement? = null,
     ): ToolRender {
         val data = client.call("render.tool", obj {
             put("toolName", JsonPrimitive(toolName))
             put("toolCallId", JsonPrimitive(toolCallId))
             put("args", args ?: JsonObject(emptyMap()))
-            if (resultText != null) {
+            if (resultText != null || details != null) {
                 put("result", obj {
-                    put("content", JsonArray(listOf(obj { put("type", JsonPrimitive("text")); put("text", JsonPrimitive(resultText)) })))
+                    put("content", JsonArray(listOf(obj { put("type", JsonPrimitive("text")); put("text", JsonPrimitive(resultText.orEmpty())) })))
+                    // 扩展的 renderResult 读的主要是 `result.details`（进度、计数、查询列表…）；
+                    // 不带它，渲染器只能看到 undefined（「undefined/undefined queries」）。
+                    if (details != null) put("details", details)
                     put("isError", JsonPrimitive(isError))
                 })
             }

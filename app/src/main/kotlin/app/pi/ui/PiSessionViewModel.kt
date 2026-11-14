@@ -4257,6 +4257,8 @@ class PiSessionViewModel(app: Application) : AndroidViewModel(app) {
             toolCallId = item.toolCallId,
             args = item.args,
             resultText = if (item.status == ToolStatus.Pending && item.output.isEmpty()) null else item.output,
+            // 已结束取结果的 details，运行中取最新的进度快照（`tool_execution_update.partialResult.details`）。
+            details = item.details ?: item.liveDetails,
             isError = item.isError,
             expanded = expanded,
             isPartial = item.status == ToolStatus.Pending,

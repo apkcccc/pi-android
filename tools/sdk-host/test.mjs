@@ -146,6 +146,8 @@ try {
   const rt = await h.call("render.tool", { toolName: "probe_tool", toolCallId: "t1", args: { q: "hi" }, width: 50, result: { content: [{ type: "text", text: "ok" }], isError: true }, expanded: true });
   expect("render.tool 渲染 call", rt.ok && rt.data.call?.[0]?.includes("q=hi w=50 n=1"), JSON.stringify(rt));
   expect("render.tool 渲染 result（同一次调用共享 state，带 isError / expanded）", rt.ok && rt.data.result?.[0] === "result expanded=true err=true n=1" && rt.data.result?.[1] === "ok", JSON.stringify(rt));
+  const rtd = await h.call("render.tool", { toolName: "probe_tool", toolCallId: "t2", args: { q: "d" }, width: 50, result: { content: [{ type: "text", text: "x" }], details: { successfulQueries: 2, totalResults: 7 }, isError: false } });
+  expect("render.tool 把 result.details 交给 renderResult（扩展渲染器读的主要是它）", rtd.ok && rtd.data.result?.[2] === 'details={"successfulQueries":2,"totalResults":7}', JSON.stringify(rtd));
   const rt2 = await h.call("render.tool", { toolName: "probe_tool", toolCallId: "t1", args: { q: "hi" }, width: 50 });
   expect("同一 toolCallId 再渲染，state 延续", rt2.ok && rt2.data.call?.[0]?.includes("n=2"), JSON.stringify(rt2));
   const rt3 = await h.call("render.tool", { toolName: "no_such_tool", args: {}, width: 50 });

@@ -26,11 +26,19 @@ internal data class ToolRenderKey(
     val status: ToolStatus,
     val outputLength: Int,
     val argsHash: Int,
+    val detailsHash: Int,
     val expanded: Boolean,
 )
 
 internal fun toolRenderKey(item: ToolCall, expanded: Boolean) =
-    ToolRenderKey(item.toolCallId, item.status, item.output.length, item.args?.hashCode() ?: 0, expanded)
+    ToolRenderKey(
+        item.toolCallId,
+        item.status,
+        item.output.length,
+        item.args?.hashCode() ?: 0,
+        (item.details ?: item.liveDetails)?.hashCode() ?: 0,
+        expanded,
+    )
 
 /** 一个工具名一旦被宿主答过"没有渲染器"，同一会话内不再问。 */
 internal class ToolRendererCache(private val fetch: suspend (ToolCall, Boolean, Int) -> HostCommands.ToolRender) {

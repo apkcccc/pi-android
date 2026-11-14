@@ -121,10 +121,12 @@ private const val COMPOSER_MAX_LINES = 6
  * `TextOverflow.MiddleEllipsis` 对单行可用（多行会退回 Clip），这里 maxLines = 1。
  */
 @Composable
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 private fun ComposerModelChip(
     label: String?,
     maxWidth: Dp,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
 ) {
     Box(
         modifier = Modifier
@@ -136,11 +138,13 @@ private fun ComposerModelChip(
             .clip(RoundedCornerShape(percent = 50))
             // 无底色：只有按下时的 pill 形涟漪，颜色 onSurface（M3 ripple 按
             // pressed alpha 12% 画），不再有 surfaceContainerHigh 的灰块。
-            .clickable(
+            .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = ripple(color = MaterialTheme.colorScheme.onSurface),
                 onClickLabel = "选择模型",
                 onClick = onClick,
+                onLongClickLabel = "切换到下一个模型",
+                onLongClick = onLongClick,
             )
             .padding(horizontal = PiSpacing.inner),
     ) {
@@ -180,6 +184,8 @@ internal fun Composer(
     modelLabel: String?,
     /** 点模型 chip：拉模型列表，再开模型面板。 */
     onOpenModel: () -> Unit,
+    /** 长按模型芯片：切到下一个（作用域）模型，不用进选择器。 */
+    onCycleModel: () -> Unit,
     /** 点思考等级的文字：循环切到下一档。 */
     onCycleThinking: () -> Unit,
     /** 长按思考等级：打开选择列表（pi 的 `thinking.levels`），不用循环到想要的那一档。 */
@@ -433,6 +439,7 @@ internal fun Composer(
                         label = modelLabel,
                         maxWidth = chipMax,
                         onClick = onOpenModel,
+                        onLongClick = onCycleModel,
                     )
                     // 思考等级：**只删了 ◐ 图标**，文字按钮本身还在；宽度够就显示。
                     if (showThinking) {

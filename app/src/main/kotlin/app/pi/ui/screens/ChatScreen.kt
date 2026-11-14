@@ -1649,6 +1649,7 @@ internal fun ChatBody(
                 session.refreshModels()
                 sheet = ChatSheet.Model
             }
+            ChatAction.CycleModel -> session.cycleModel()
             ChatAction.PickThinking -> {
                 session.refreshThinkingLevels()
                 sheet = ChatSheet.Thinking
@@ -2248,6 +2249,7 @@ internal fun ChatBody(
             // 顶栏那颗 chip 挪到工具行之后，模型名和「打开模型面板」的动作从这里进。
             modelLabel = modelLabel,
             onOpenModel = { perform(ChatAction.PickModel) },
+            onCycleModel = { perform(ChatAction.CycleModel) },
             onDraftChange = { draft = it },
             thinkingLevel = state.meta.thinkingLevel,
             streaming = state.streaming,

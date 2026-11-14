@@ -23,6 +23,8 @@ enum class ChatAction {
 
     OpenSettings,
     PickModel,
+    /** pi 的 `app.model.cycleForward`（Ctrl+P）：按「作用域模型」顺序切到下一个。 */
+    CycleModel,
     PickThinking,
     OpenTree,
     SessionStats,

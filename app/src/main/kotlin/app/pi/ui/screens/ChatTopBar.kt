@@ -225,6 +225,7 @@ internal fun ChatTopBar(
                             add(PiMenuItem("会话与队列") { onAction(ChatAction.ToolsSheet) })
                             // ---- 模型
                             add(PiMenuItem("选择模型…", dividerBefore = true) { onAction(ChatAction.PickModel) })
+                            add(PiMenuItem("下一个模型") { onAction(ChatAction.CycleModel) })
                             add(PiMenuItem("思考等级…") { onAction(ChatAction.PickThinking) })
                             // ---- 全局
                             add(PiMenuItem("重新加载扩展与资源", dividerBefore = true) { onAction(ChatAction.ReloadResources) })

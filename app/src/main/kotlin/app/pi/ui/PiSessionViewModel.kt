@@ -4715,6 +4715,24 @@ class PiSessionViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * `model.cycle`：按作用域顺序切到下一个模型（pi 的 Ctrl+P）。
+     * 只有一个可选模型时宿主答 null，给一句提示而不是静默。
+     */
+    fun cycleModel() {
+        call("切换模型") { api ->
+            val result = api.cycleModel()
+            val model = result?.model
+            if (model == null) {
+                pushNotice("没有其他可切换的模型", Notice.Tone.Warning)
+                return@call
+            }
+            _state.value = _state.value.copy(meta = _state.value.meta.copy(model = model))
+            refreshState()
+            refreshStats()
+        }
+    }
+
     /** `set_model`. pi answers with the model it actually switched to. */
     fun setModel(model: PiResponses.ModelInfo) {
         val provider = model.provider

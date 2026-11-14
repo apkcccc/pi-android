@@ -99,6 +99,14 @@ function pinnedVersion() {
 }
 
 const failures = [];
+/** [text] 里从 [from] 到 [until]（缺省到文件尾）的那一段；用来把断言限定在某一个函数体里。 */
+function functionBody(text, from, until) {
+	const i = text.indexOf(from);
+	if (i < 0) return "";
+	const j = until ? text.indexOf(until, i + from.length) : -1;
+	return j < 0 ? text.slice(i) : text.slice(i, j);
+}
+
 function check(name, ok, consequence) {
 	if (ok) {
 		console.log(`PASS ${name}`);
@@ -1924,7 +1932,7 @@ function checkAppTables(piDir) {
 	check(
 		"pi gives renderResult { content, details }, and the host forwards result.details",
 		/resultRenderer\(\{ content: this\.result\.content, details: this\.result\.details \}/.test(toolExec) &&
-			/put\("details", details\)/.test(read("app/src/main/kotlin/app/pi/host/HostCommands.kt")),
+			/put\("details", details\)/.test(functionBody(read("app/src/main/kotlin/app/pi/host/HostCommands.kt"), "suspend fun renderTool(", "suspend fun renderMessage(")),
 		`pi calls renderResult with { content, details }. HostCommands.renderTool must put the tool's ` +
 			`details into the result it sends, or every renderer that reads details renders undefined.`,
 	);

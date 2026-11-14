@@ -2456,6 +2456,15 @@ private fun ChatBody(
                 .fillMaxWidth()
                 .onSizeChanged { aboveComposerHeightPx = it.height },
         ) {
+        // 压缩在跑：pi 的终端里有「Compacting… (esc to cancel)」，这里同样给一张带中止的卡，
+        // 不用翻到设置页（`session.abortCompaction`）。
+        if (state.meta.compacting) {
+            StatusActionRow(
+                text = "正在压缩上下文…",
+                actionLabel = "中止",
+                onAction = { session.abortCompaction() },
+            )
+        }
         if (state.queueSteering > 0 || state.queueFollowUp > 0) {
             QueueRow(
                 steering = state.queueSteering,
@@ -3610,6 +3619,39 @@ private const val PENDING_MESSAGE_LINES = 2
  * `design/ui-refactor/14-illustration-and-queue-diff.md:230` option (a), and the
  * message text itself was adjudicated in row 6 of that table (`:181`).
  */
+/** 输入框上方的一行状态卡：一句话 + 一个文字动作。队列行、压缩中止共用同一套外观。 */
+@Composable
+private fun StatusActionRow(text: String, actionLabel: String, onAction: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = PiSpacing.composerPageMargin)
+            .padding(bottom = PiSpacing.small),
+        shape = PiShapes.card,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(PiSpacing.inline),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = text,
+                modifier = Modifier.weight(1f),
+                style = PiTheme.text.meta,
+                color = PiTheme.palette.dim,
+            )
+            Text(
+                text = actionLabel,
+                modifier = Modifier
+                    .clickable(onClickLabel = actionLabel, onClick = onAction)
+                    .padding(horizontal = PiSpacing.small, vertical = PiSpacing.tiny),
+                style = PiTheme.text.meta,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
 @Composable
 private fun QueueRow(
     steering: Int,

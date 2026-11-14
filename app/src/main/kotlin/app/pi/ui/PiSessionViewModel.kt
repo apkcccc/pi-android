@@ -4775,6 +4775,12 @@ class PiSessionViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** 停止正在进行的上下文压缩（SDK `abortCompaction`）；聊天页的状态卡直接用。 */
+    fun abortCompaction() {
+        val engine = session ?: return
+        viewModelScope.launch { runCatching { engine.advanced.abortCompaction() } }
+    }
+
     /** 停止正在进行的分支摘要（SDK `abortBranchSummary`）。 */
     fun abortBranchSummary() {
         val engine = session ?: return

@@ -2,6 +2,7 @@ package app.pi.ui.extension
 
 import androidx.compose.runtime.staticCompositionLocalOf
 import app.pi.host.HostCommands
+import app.pi.rpc.HookMessage
 import app.pi.rpc.ToolCall
 import app.pi.rpc.ToolStatus
 
@@ -48,6 +49,39 @@ internal class ToolRendererCache(private val fetch: suspend (ToolCall, Boolean, 
         if (last.size > 200) last.clear()
         last[key] = r
         return r
+    }
+
+    fun reset() { absent.clear(); last.clear() }
+}
+
+/**
+ * 扩展自定义消息（`custom_message`）的渲染入口：扩展用 `registerMessageRenderer(customType, …)`
+ * 注册了渲染器就按它画（行 → 原生文本），没注册就回落到 markdown——与 pi 的 `CustomMessageComponent` 一致。
+ */
+fun interface MessageRenderer {
+    /** @return 没有渲染器 / 宿主不可达时为 null。 */
+    suspend fun render(item: HookMessage, expanded: Boolean): List<String>?
+}
+
+val LocalMessageRenderer = staticCompositionLocalOf<MessageRenderer?> { null }
+
+/** 同一个 `customType` 被答过"没有渲染器"就不再问；结果按（行、内容、展开态）缓存。 */
+internal class MessageRendererCache(private val fetch: suspend (HookMessage, Boolean) -> List<String>?) {
+    private val absent = HashSet<String>()
+    private val last = HashMap<Triple<String, Int, Boolean>, List<String>>()
+
+    suspend fun render(item: HookMessage, expanded: Boolean): List<String>? {
+        if (item.customType in absent) return null
+        val key = Triple(item.key, item.markdown.hashCode() * 31 + (item.details?.hashCode() ?: 0), expanded)
+        last[key]?.let { return it }
+        val lines = fetch(item, expanded)
+        if (lines == null) {
+            absent += item.customType
+            return null
+        }
+        if (last.size > 200) last.clear()
+        last[key] = lines
+        return lines
     }
 
     fun reset() { absent.clear(); last.clear() }

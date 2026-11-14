@@ -238,6 +238,33 @@ class HostCommands(
         return ToolRender(lines("call"), lines("result"))
     }
 
+    /**
+     * `render.message`：让宿主调扩展为某个 `customType` 注册的消息渲染器（`registerMessageRenderer`），
+     * 按 [width] 列渲染成行。没有渲染器返回 null（调用方回落到 markdown）。
+     */
+    suspend fun renderMessage(
+        customType: String,
+        text: String,
+        details: JsonElement?,
+        expanded: Boolean,
+        width: Int,
+    ): List<String>? {
+        val data = client.call("render.message", obj {
+            put("customType", JsonPrimitive(customType))
+            put("message", obj {
+                put("role", JsonPrimitive("custom"))
+                put("customType", JsonPrimitive(customType))
+                put("content", JsonPrimitive(text))
+                put("display", JsonPrimitive(true))
+                if (details != null) put("details", details)
+                put("timestamp", JsonPrimitive(System.currentTimeMillis()))
+            })
+            put("expanded", JsonPrimitive(expanded))
+            put("width", JsonPrimitive(width))
+        }) as? JsonObject
+        return (data?.get("lines") as? JsonArray)?.map { (it as? JsonPrimitive)?.content ?: it.toString() }
+    }
+
     suspend fun uiInput(surfaceId: String, data: String) {
         client.call("ui.input", obj { put("surfaceId", JsonPrimitive(surfaceId)); put("data", JsonPrimitive(data)) })
     }

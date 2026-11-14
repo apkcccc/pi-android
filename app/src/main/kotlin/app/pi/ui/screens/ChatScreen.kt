@@ -2003,6 +2003,7 @@ internal fun ChatBody(
                         LocalPiMarkdownImmediate provides immediateMarkdown,
                         LocalPiMarkdownParsed provides onMarkdownParsed,
                         app.pi.ui.extension.LocalToolRenderer provides session.toolRenderer,
+                        app.pi.ui.extension.LocalMessageRenderer provides session.messageRenderer,
                         app.pi.ui.chat.LocalMessageActions provides messageActions,
                         app.pi.ui.blocks.LocalThinkingLabel provides state.ext.thinkingLabel
                             ?.let { app.pi.ui.extension.chromeText(it).trim() }?.takeIf { it.isNotEmpty() },

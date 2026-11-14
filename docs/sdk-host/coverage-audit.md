@@ -86,3 +86,14 @@ list / listAll / open / getTree / getBranch / appendSessionInfo / appendLabelCha
 ## 故意不接
 - 键位 / 终端相关设置（`keybindings`、`tuiMode`、`fullscreen*`、`editorPaddingX`…）：手机用不上。它们仍可经 `settings.set` 写，只是界面不暴露。
 - 遥测 / 崩溃日志上传（`telemetry`、`bug-report-upload`）：不替用户上传；问题报告只在本地生成文本，由用户决定怎么发。
+
+## 聊天页补充（引擎就绪闸门 / 工具卡 / 参数补全 / 消息渲染器）
+
+| 项 | 协议 | 手机侧 |
+|---|---|---|
+| 就绪闸门 | `session.open` 应答前宿主拒绝一切读写（NOT_OPEN） | `awaitServing`：所有 `call()` 与挂载时的回放读取先等引擎 Ready/Busy |
+| 工具卡折叠语义 | pi 终端：折叠即预览、展开全量；手机：默认只有标题，运行中/失败/edit diff 例外 | `ToolCallBlock` 及各原生块；扩展渲染行折叠只画调用行 + 5 行结果 |
+| 命令参数 | `catalog.commands`（`argumentHint`/`hasCompletions`）、`catalog.commandCompletions` | `argumentContextOf` + `ArgumentPalette`；120 ms 防抖，后发先至 |
+| 模型循环 | `model.cycle` | 长按模型芯片 / ⋮「下一个模型」（`ChatAction.CycleModel`） |
+| 压缩中止 | `session.abortCompaction` | 输入框上方「正在压缩… 中止」状态卡 |
+| 自定义消息渲染 | `render.message`（扩展 `registerMessageRenderer`） | `HookMessage.details` 贯通回放/实时两条路；`HookMessageBlock` 有渲染器按行画，没有回落 markdown |

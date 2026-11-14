@@ -1,6 +1,10 @@
 package app.pi.ui.blocks
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
@@ -8,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -36,7 +41,14 @@ fun HookMessageBlock(
     // `app.tools.expand`, interactive-mode.ts `setToolsExpanded`) reaches every
     // row, exactly as pi re-applies expansion to all of its children.
     var expanded by rememberSaveable(defaultExpanded) { mutableStateOf(defaultExpanded) }
-    val collapsible = item.markdown.length > 240 || item.markdown.count { it == '\n' } > 4
+    // 扩展用 `registerMessageRenderer` 给这个 customType 注册了渲染器就按它画（pi 的
+    // `CustomMessageComponent` 同样优先走渲染器，没有才是 markdown）。行由宿主按 `expanded` 渲染。
+    val messageRenderer = app.pi.ui.extension.LocalMessageRenderer.current
+    val rendered by produceState<List<String>?>(null, item.key, item.markdown, item.details, expanded, messageRenderer) {
+        value = messageRenderer?.render(item, expanded) ?: value
+    }
+    val renderedLines = rendered
+    val collapsible = renderedLines != null || item.markdown.length > 240 || item.markdown.count { it == '\n' } > 4
 
     BlockColumn(modifier) {
         BlockCard(
@@ -60,7 +72,15 @@ fun HookMessageBlock(
                     Spacer(Modifier.weight(1f))
                     if (collapsible) ExpandLabel(expanded)
                 }
-                if (expanded || !collapsible) {
+                if (renderedLines != null) {
+                    Column(
+                        modifier = Modifier
+                            .padding(top = PiSpacing.tiny)
+                            .horizontalScroll(rememberScrollState()),
+                    ) {
+                        renderedLines.forEach { app.pi.ui.extension.PanelLine(it, wrap = false) }
+                    }
+                } else if (expanded || !collapsible) {
                 // Expanded (or short enough that there is nothing to collapse):
                 // markdown. The renderer's own hook-message component builds a
                 // `Markdown` over the message body

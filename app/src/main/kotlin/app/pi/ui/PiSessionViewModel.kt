@@ -83,6 +83,8 @@ import app.pi.ui.extension.ExtensionDialog
 import app.pi.ui.extension.ExtensionDialogMethod
 import app.pi.ui.extension.ExtensionDialogQueue
 import app.pi.ui.extension.ExtensionNotice
+import app.pi.ui.extension.MessageRenderer
+import app.pi.ui.extension.MessageRendererCache
 import app.pi.ui.extension.ToolRenderer
 import app.pi.ui.extension.ToolRendererCache
 import app.pi.ui.extension.chromeText
@@ -3220,6 +3222,7 @@ class PiSessionViewModel(app: Application) : AndroidViewModel(app) {
     /** Forget per-session chrome that a gone engine can no longer maintain. */
     private fun clearExtensionChrome() {
         toolRenderCache.reset()
+        messageRenderCache.reset()
         _state.value = _state.value.copy(
             ext = ExtUiState(),
             windowTitle = null,
@@ -4260,6 +4263,16 @@ class PiSessionViewModel(app: Application) : AndroidViewModel(app) {
             durationMs = item.durationMs,
             width = width,
         )
+    }
+
+    private val messageRenderCache = MessageRendererCache { item, expanded ->
+        val commands = session?.commands ?: throw IllegalStateException("no session")
+        commands.renderMessage(item.customType, item.markdown, item.details, expanded, panelColumns.takeIf { it > 0 } ?: 80)
+    }
+
+    /** 扩展自定义消息的渲染入口：没有渲染器 / 宿主不可达回 null，消息回落 markdown。 */
+    val messageRenderer = MessageRenderer { item, expanded ->
+        runCatching { messageRenderCache.render(item, expanded) }.getOrNull()
     }
 
     /** 工具卡的扩展渲染入口：宿主不可达 / 没有渲染器都回 null，卡片回落通用样式。 */

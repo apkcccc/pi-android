@@ -235,6 +235,8 @@ data class HookMessage(
     override val ts: Long,
     val customType: String = "",
     val markdown: String = "",
+    /** 消息的 `details`（任意 JSON）；扩展的消息渲染器按它画，没有就只能画 [markdown]。 */
+    val details: JsonElement? = null,
 ) : TranscriptItem
 
 /** The `model-change` block: a single muted line in the stream. */
@@ -1173,7 +1175,7 @@ class TranscriptReducer(private val now: () -> Long = { System.currentTimeMillis
                 // [onHookEntry]); the live chain used to drop it, so injected context
                 // only appeared after a reload. `display: false` means pi keeps it in
                 // context but hides it, exactly as [onHookEntry] treats it.
-                onHookMessage(event.customType ?: "extension", event.text)
+                onHookMessage(event.customType ?: "extension", event.text, details = event.details)
             } else if (event.role == "user") {
                 // History replay reaches the same rows through `onEntry` -> the
                 // persisted `message` entry; this is the live half, so an
@@ -2503,6 +2505,7 @@ class TranscriptReducer(private val now: () -> Long = { System.currentTimeMillis
                 ts = ts,
                 customType = customType,
                 markdown = text,
+                details = entry["details"],
             ),
         )
     }
@@ -2566,6 +2569,7 @@ class TranscriptReducer(private val now: () -> Long = { System.currentTimeMillis
         customType: String,
         text: String,
         entryId: String? = null,
+        details: JsonElement? = null,
     ): TranscriptChange {
         if (customType.isBlank() && text.isEmpty()) return TranscriptChange.None
         return append(
@@ -2574,6 +2578,7 @@ class TranscriptReducer(private val now: () -> Long = { System.currentTimeMillis
                 ts = now(),
                 customType = customType,
                 markdown = text,
+                details = details,
             ),
         )
     }

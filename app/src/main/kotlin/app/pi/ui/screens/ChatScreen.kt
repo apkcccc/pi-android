@@ -104,6 +104,7 @@ import app.pi.ui.blocks.TranscriptRowAnchor
 import app.pi.ui.chat.BashPanel
 import app.pi.ui.chat.ComposerRoute
 import app.pi.ui.chat.ChatAction
+import app.pi.ui.chat.argumentContextOf
 import app.pi.ui.chat.PiFileMentions
 import app.pi.ui.chat.PiSlashCommand
 import app.pi.ui.chat.TailFollow
@@ -1565,6 +1566,17 @@ internal fun ChatBody(
     // the list contains: the query that runs is the one whose result is still wanted,
     // because `session.requestMentions` drops every superseded answer.
     val mentionPrefix = PiFileMentions.prefixOf(draft)
+    // 命令名写完（出现空格）之后：给用法提示，扩展声明了补全的就去要候选。
+    val argContext = remember(draft, state.commands) { argumentContextOf(draft, state.commands) }
+    LaunchedEffect(argContext?.command?.name, argContext?.prefix) {
+        val ctx = argContext
+        if (ctx == null || !ctx.command.completes) {
+            session.dismissArgCompletions()
+        } else {
+            delay(ARG_COMPLETION_DEBOUNCE_MS)
+            session.requestArgCompletions(ctx.command.name, ctx.prefix)
+        }
+    }
     LaunchedEffect(mentionPrefix) {
         if (mentionPrefix == null) {
             session.dismissMentions()
@@ -2225,6 +2237,7 @@ internal fun ChatBody(
             onAttachments = { attachments = it },
             mentionPrefix = mentionPrefix,
             onPickCommand = { command, args -> pick(command, args) },
+            argContext = argContext,
             onAboveHeight = { aboveComposerHeightPx = it },
         )
 
@@ -2476,6 +2489,9 @@ private fun userMessageOrdinal(items: List<TranscriptItem>, key: String): Int {
  * No measured latency is claimed for that guest process - there is no device here.
  */
 private const val MENTION_DEBOUNCE_MS: Long = 150L
+
+/** 参数补全的防抖：每个按键都去问扩展太吵，停 120 ms 再问；旧应答由 ViewModel 丢弃。 */
+private const val ARG_COMPLETION_DEBOUNCE_MS: Long = 120L
 
 
 /**

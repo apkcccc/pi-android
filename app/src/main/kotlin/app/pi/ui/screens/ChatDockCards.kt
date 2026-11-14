@@ -16,6 +16,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import app.pi.rpc.PiImage
 import app.pi.ui.PiSessionViewModel
+import app.pi.ui.chat.ArgumentContext
+import app.pi.ui.chat.ArgumentPalette
 import app.pi.ui.chat.BashPanel
 import app.pi.ui.chat.MentionPalette
 import app.pi.ui.chat.PiFileMentions
@@ -49,6 +51,7 @@ internal fun ChatDockCards(
     onAttachments: (List<PiImage>) -> Unit,
     mentionPrefix: String?,
     onPickCommand: (PiSlashCommand, String) -> Unit,
+    argContext: ArgumentContext?,
     onAboveHeight: (Int) -> Unit,
 ) {
     val context = LocalContext.current
@@ -178,7 +181,7 @@ internal fun ChatDockCards(
                 // `/model` and `/thinking`, whose argument the app picked itself —
                 // are gone with their rows: they are no longer in this palette at
                 // all, so the exception set is empty rather than wrong.
-                if (command.argumentHint != null) {
+                if (command.argumentHint != null || command.completes) {
                     onDraft("${command.invocation} ")
                 } else {
                     onDraft("")
@@ -201,6 +204,20 @@ internal fun ChatDockCards(
     // to submitting (`packages/tui/src/components/editor.ts:784-802`). This
     // app has no Enter-to-send for the composer to collide with, so a tap is
     // the whole gesture.
+    // 命令名写完后轮到参数：用法提示 + 扩展给的候选。
+    if (argContext != null) {
+        val answer = state.argCompletions?.takeIf {
+            it.command == argContext.command.name && it.prefix == argContext.prefix
+        }
+        ArgumentPalette(
+            command = argContext.command,
+            prefix = argContext.prefix,
+            completions = answer?.items.orEmpty(),
+            onPick = { item -> onDraft("/${argContext.command.name} ${item.value} ") },
+            modifier = Modifier.padding(horizontal = PiSpacing.pageHorizontal, vertical = PiSpacing.small),
+        )
+    }
+
     val mentions = state.mentions
     if (mentionPrefix != null && mentions != null && mentions.query == mentionPrefix && mentions.items.isNotEmpty()) {
         val prefix = mentionPrefix

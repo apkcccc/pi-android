@@ -103,6 +103,8 @@ data class PiSlashCommand(
     val sourceTag: String?,
     val action: ChatAction,
     val argumentHint: String? = null,
+    /** 该命令（扩展命令的 `getArgumentCompletions`）能按已输入的前缀给参数候选。 */
+    val completes: Boolean = false,
 ) {
     /** What the user types to invoke it. */
     val invocation: String get() = "/$name"
@@ -263,6 +265,23 @@ fun unsupportedReason(name: String): String =
  *        owns. The skills stay readable by the model either way — the setting is
  *        about the command panel, not about access.
  */
+/** 输入框里「命令名已写完、正在写参数」的状态：哪条命令、参数写到哪了。 */
+data class ArgumentContext(val command: PiSlashCommand, val prefix: String)
+
+/**
+ * 草稿是 `/名字 参数…` 且 `名字` 是已知命令时，返回命令和已输入的参数前缀；否则 null。
+ * 命令面板只管第一个词（见 `paletteQueryOf`），空格之后轮到这里。
+ */
+fun argumentContextOf(draft: String, commands: List<PiSlashCommand>): ArgumentContext? {
+    val text = draft.trimStart()
+    if (!text.startsWith("/")) return null
+    val space = text.indexOf(' ')
+    if (space < 0) return null
+    val name = text.substring(1, space)
+    val command = commands.firstOrNull { it.name == name } ?: return null
+    return ArgumentContext(command, text.substring(space + 1))
+}
+
 fun piCommandPalette(
     commands: List<PiResponses.SlashCommand>,
     builtins: List<PiSlashCommand> = builtinRows(emptyList()),
@@ -285,6 +304,8 @@ fun piCommandPalette(
             },
             sourceTag = sourceTagOf(command.sourceInfo),
             action = ChatAction.Prompt,
+            argumentHint = command.argumentHint,
+            completes = command.hasCompletions,
         )
     }
     return builtins + fromPi.sortedBy { tuiGroupRank(it.source) }

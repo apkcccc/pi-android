@@ -152,6 +152,13 @@ class PiSessionViewModel(app: Application) : AndroidViewModel(app) {
      * does not appear when it has no suggestions
      * (`packages/tui/src/autocomplete.ts:305`).
      */
+    /** 命令参数补全的一次应答：对 [command] 的 [prefix] 给出的候选（`catalog.commandCompletions`）。 */
+    data class ArgCompletions(
+        val command: String,
+        val prefix: String,
+        val items: List<PiResponses.CommandCompletion>,
+    )
+
     data class MentionList(
         val query: String,
         val items: List<PiFileMentions.Item>,
@@ -301,6 +308,7 @@ class PiSessionViewModel(app: Application) : AndroidViewModel(app) {
         val bash: BashRun? = null,
         /** The `@` mention list for the token in the composer, if one is open. */
         val mentions: MentionList? = null,
+        val argCompletions: ArgCompletions? = null,
         /** Label of the long RPC call in flight, for a progress line. */
         val busy: String? = null,
         /**
@@ -4866,6 +4874,31 @@ class PiSessionViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 }
             }
+        }
+    }
+
+    private var argCompletionId = 0
+
+    /**
+     * 向扩展命令要参数候选（pi 的 `getArgumentCompletions`）。后发先至：旧请求的应答一律丢弃；
+     * 失败不弹通知（补全是锦上添花，扩展里抛了就当没有候选）。
+     */
+    fun requestArgCompletions(name: String, prefix: String) {
+        val id = ++argCompletionId
+        val engine = session ?: return
+        val api = this.api ?: return
+        viewModelScope.launch {
+            if (!awaitServing(engine)) return@launch
+            val items = runCatching { api.getCommandCompletions(name, prefix) }.getOrNull() ?: return@launch
+            if (id != argCompletionId) return@launch
+            _state.value = _state.value.copy(argCompletions = ArgCompletions(name, prefix, items))
+        }
+    }
+
+    fun dismissArgCompletions() {
+        argCompletionId++
+        if (_state.value.argCompletions != null) {
+            _state.value = _state.value.copy(argCompletions = null)
         }
     }
 

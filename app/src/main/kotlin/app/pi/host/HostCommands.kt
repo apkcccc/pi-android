@@ -219,6 +219,7 @@ class HostCommands(
         durationMs: Long?,
         width: Int,
         details: JsonElement? = null,
+        images: List<app.pi.rpc.PiImage> = emptyList(),
     ): ToolRender {
         val data = client.call("render.tool", obj {
             put("toolName", JsonPrimitive(toolName))
@@ -226,7 +227,11 @@ class HostCommands(
             put("args", args ?: JsonObject(emptyMap()))
             if (resultText != null || details != null) {
                 put("result", obj {
-                    put("content", JsonArray(listOf(obj { put("type", JsonPrimitive("text")); put("text", JsonPrimitive(resultText.orEmpty())) })))
+                    // pi 的 result.content 是「文本块 + 图片块」；图片块一并交给渲染器（扩展按 type 筛）。
+                    put("content", JsonArray(
+                        listOf(obj { put("type", JsonPrimitive("text")); put("text", JsonPrimitive(resultText.orEmpty())) }) +
+                            images.map { img -> obj { put("type", JsonPrimitive("image")); put("data", JsonPrimitive(img.base64)); put("mimeType", JsonPrimitive(img.mimeType)) } },
+                    ))
                     // 扩展的 renderResult 读的主要是 `result.details`（进度、计数、查询列表…）；
                     // 不带它，渲染器只能看到 undefined（「undefined/undefined queries」）。
                     if (details != null) put("details", details)

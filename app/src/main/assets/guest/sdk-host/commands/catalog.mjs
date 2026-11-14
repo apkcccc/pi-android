@@ -162,7 +162,9 @@ export function register(reg, { controller }) {
     const s = controller.requireSession();
     const renderer = s.extensionRunner.getMessageRenderer(str(args, "customType"));
     if (!renderer) return { lines: null, reason: "no_renderer" };
-    const component = renderer(args.message, { expanded: Boolean(args.expanded), outputPad: 0 }, controller.theme);
+    // 选项与 pi 的 CustomMessageComponent.rebuild 一致：expanded / outputPad / keyText / keyHint。
+    const message = { ...args.message, customType: str(args, "customType") };
+    const component = renderer(message, { expanded: Boolean(args.expanded), outputPad: 0, keyText: hints.keyText, keyHint: hints.keyHint }, controller.theme);
     return { lines: component ? component.render(Number(args.width) || controller.surfaces.width) : null };
   });
 
@@ -181,7 +183,8 @@ export function register(reg, { controller }) {
     }
     return st;
   };
-  const hints = { keyText: () => "", keyHint: (_id, description) => description };
+  // pi 官方导出的 keyText / keyHint（读用户真实的快捷键配置），不再自己写桩。
+  const hints = { keyText: (...a) => controller.sdk.keyText(...a), keyHint: (...a) => controller.sdk.keyHint(...a) };
 
   reg.add("render.tool", (args) => {
     const s = controller.requireSession();

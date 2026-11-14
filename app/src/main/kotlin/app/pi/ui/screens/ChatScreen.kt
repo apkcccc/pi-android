@@ -192,6 +192,7 @@ fun ChatScreen(
     onOpenSettings: () -> Unit,
 ) {
     val state by session.state.collectAsState()
+    val renderRev by session.renderRev.collectAsState()
     val bottomInset = contentPadding.calculateBottomPadding()
 
     // D31: the boot surface is for **work** and for **failure** only.
@@ -2002,8 +2003,12 @@ internal fun ChatBody(
                         LocalTranscriptRowAnchor provides rowAnchor,
                         LocalPiMarkdownImmediate provides immediateMarkdown,
                         LocalPiMarkdownParsed provides onMarkdownParsed,
-                        app.pi.ui.extension.LocalToolRenderer provides session.toolRenderer,
-                        app.pi.ui.extension.LocalMessageRenderer provides session.messageRenderer,
+                        app.pi.ui.extension.LocalToolRenderer provides remember(renderRev) {
+                            app.pi.ui.extension.ToolRenderer { item, expanded -> session.toolRenderer.render(item, expanded) }
+                        },
+                        app.pi.ui.extension.LocalMessageRenderer provides remember(renderRev) {
+                            app.pi.ui.extension.MessageRenderer { item, expanded -> session.messageRenderer.render(item, expanded) }
+                        },
                         app.pi.ui.chat.LocalMessageActions provides messageActions,
                         app.pi.ui.blocks.LocalThinkingLabel provides state.ext.thinkingLabel
                             ?.let { app.pi.ui.extension.chromeText(it).trim() }?.takeIf { it.isNotEmpty() },

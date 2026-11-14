@@ -2267,6 +2267,17 @@ class PiSessionViewModel(app: Application) : AndroidViewModel(app) {
         extUiJob = viewModelScope.launch {
             engine.extUi.collect { ext -> _state.value = _state.value.copy(ext = ext) }
         }
+        // 官方渲染组件自己要求重绘（`ui.requestRender()`：动画、定时刷新）→ 清缓存、换一版，卡片重取。
+        renderInvalidateJob?.cancel()
+        renderInvalidateJob = viewModelScope.launch {
+            engine.hostEvents.collect { ev ->
+                if (ev.name == "render.invalidate") {
+                    toolRenderCache.reset()
+                    messageRenderCache.reset()
+                    _renderRev.value += 1
+                }
+            }
+        }
         // 会话列表要宿主已 `session.open` 才读得到：引擎一就绪就补读一次（此前的读取会失败并保留旧列表）。
         viewModelScope.launch {
             engine.state.first { it == PiEngineSession.EngineState.Ready || it == PiEngineSession.EngineState.Busy }
@@ -4249,6 +4260,12 @@ class PiSessionViewModel(app: Application) : AndroidViewModel(app) {
         val commands = hostCommands() ?: return
         viewModelScope.launch { runCatching { commands.uiPalette(palette) } }
     }
+
+    private var renderInvalidateJob: Job? = null
+    private val _renderRev = MutableStateFlow(0)
+
+    /** 宿主说「渲染结果变了」时加一；聊天页据此换一个 [ToolRenderer] 实例，卡片的 produceState 就重取。 */
+    val renderRev: StateFlow<Int> = _renderRev.asStateFlow()
 
     private val toolRenderCache = ToolRendererCache { item, expanded, width ->
         val commands = session?.commands ?: throw IllegalStateException("no session")

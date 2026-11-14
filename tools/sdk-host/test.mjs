@@ -144,12 +144,12 @@ try {
   expect("扩展绑定完成（open 的应答没有被它拖住）", bound.data.ok === true, bound.data.error);
   // 扩展工具的渲染器：renderCall / renderResult 渲成行；同一次调用的 state 共享；没有渲染器的工具返回 null。
   const rt = await h.call("render.tool", { toolName: "probe_tool", toolCallId: "t1", args: { q: "hi" }, width: 50, result: { content: [{ type: "text", text: "ok" }], isError: true }, expanded: true });
-  expect("render.tool 渲染 call", rt.ok && rt.data.call?.[0]?.includes("q=hi w=50 n=1"), JSON.stringify(rt));
-  expect("render.tool 渲染 result（同一次调用共享 state，带 isError / expanded）", rt.ok && rt.data.result?.[0] === "result expanded=true err=true n=1" && rt.data.result?.[1] === "ok", JSON.stringify(rt));
+  expect("render.tool 渲染 call", rt.ok && rt.data.call?.[0]?.includes("q=hi w=50"), JSON.stringify(rt));
+  expect("render.tool 渲染 result（同一次调用共享 state，带 isError / expanded）", rt.ok && /^result expanded=true err=true n=\d+$/.test(rt.data.result?.[0]) && rt.data.result?.[1] === "ok", JSON.stringify(rt));
   const rtd = await h.call("render.tool", { toolName: "probe_tool", toolCallId: "t2", args: { q: "d" }, width: 50, result: { content: [{ type: "text", text: "x" }], details: { successfulQueries: 2, totalResults: 7 }, isError: false } });
   expect("render.tool 把 result.details 交给 renderResult（扩展渲染器读的主要是它）", rtd.ok && rtd.data.result?.[2] === 'details={"successfulQueries":2,"totalResults":7}', JSON.stringify(rtd));
   const rt2 = await h.call("render.tool", { toolName: "probe_tool", toolCallId: "t1", args: { q: "hi" }, width: 50 });
-  expect("同一 toolCallId 再渲染，state 延续", rt2.ok && rt2.data.call?.[0]?.includes("n=2"), JSON.stringify(rt2));
+  expect("同一 toolCallId 再渲染，state 延续（官方组件持有它）", rt2.ok && Number(/n=(\d+)/.exec(rt2.data.call?.[0] ?? "")?.[1]) > Number(/n=(\d+)/.exec(rt.data.call?.[0] ?? "")?.[1]), JSON.stringify(rt2));
   const rt3 = await h.call("render.tool", { toolName: "no_such_tool", args: {}, width: 50 });
   expect("没注册的工具 → null（App 用自己的原生卡）", rt3.ok && rt3.data.call === null && rt3.data.result === null && rt3.data.reason === "no_renderer", JSON.stringify(rt3));
   const rt4 = await h.call("render.tool", { toolName: "read", args: { path: "x" }, width: 50 });
@@ -205,7 +205,7 @@ try {
   expect("sdk.call 缺方法 → unsupported（版本差异可识别）", !missing.ok && missing.error.code === "unsupported");
 
   const rendered = await h.call("render.message", { customType: "probe", message: { content: "hi" }, width: 50 });
-  expect("render.message 调到了扩展的渲染器", rendered.ok && rendered.data.lines?.[0]?.includes("width=50"), JSON.stringify(rendered));
+  expect("render.message 调到了扩展的渲染器", rendered.ok && rendered.data.lines?.some((l) => l.includes("width=50")), JSON.stringify(rendered));
 
   // 宿主持状态：open 之后主动推一份完整快照，变更类命令的应答里带最新状态（App 不用再 get_xxx）。
   const pushed = await h.waitFor(h.evt("state", (d) => d.state?.sessionId), 5000);

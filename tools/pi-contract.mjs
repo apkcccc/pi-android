@@ -1906,29 +1906,37 @@ function checkAppTables(piDir) {
 	);
 
 	// ------------------------------------------------- tool / message renderer inputs
-	// 宿主替 TUI 调扩展的 renderCall / renderResult / 消息渲染器。扩展读什么，宿主就得给什么：
-	// 少给一个键，扩展那边就是 `undefined`（pi-web-access 的「undefined/undefined queries」就是少了
-	// `result.details`）。这里从 pi 的 tool-execution.js 读出它给渲染器的键，逐个对照宿主。
+	// 渲染一律由 pi 官方的 ToolExecutionComponent / CustomMessageComponent 做（它们自己拼 render context，
+	// 宿主不再手拼——手拼就是 undefined/undefined 的来源）。这里守三件事：宿主确实在用官方组件、
+	// 官方组件还导出、宿主读的两个内部子渲染字段还在。
 	const toolExec = engine("modes/interactive/components/tool-execution.js");
-	const ctxBlock = /getRenderContext\(lastComponent\)\s*\{\s*return\s*\{([\s\S]*?)\n\s{8}\};/.exec(toolExec)?.[1] ?? "";
-	const piCtxKeys = [...ctxBlock.matchAll(/^\s{12}(\w+)[,:]/gm)].map((m) => m[1]);
 	const hostRender = read("app/src/main/assets/guest/sdk-host/commands/catalog.mjs");
 	check(
-		"pi's tool render context is still readable (>= 12 keys)",
-		piCtxKeys.length >= 12,
-		`tool-execution.js getRenderContext() answered ${piCtxKeys.length} keys. The reader expects the ` +
-			`object literal at 12-space indent; re-point it before the host-vs-pi comparison goes blind.`,
+		"the host renders tools and custom messages with pi's own components",
+		/new controller\.sdk\.ToolExecutionComponent\(/.test(hostRender) &&
+			/new CustomMessageComponent\(/.test(hostRender) &&
+			!/renderCall\(callArgs/.test(hostRender) &&
+			!/getRenderContext|invalidate\(\) \{\}/.test(hostRender),
+		`commands/catalog.mjs must drive ToolExecutionComponent / CustomMessageComponent, not hand-build a render ` +
+			`context and call renderCall/renderResult itself.`,
 	);
-	for (const key of piCtxKeys) {
-		check(
-			`the host's render.tool context carries \`${key}\` (pi gives it to renderCall/renderResult)`,
-			new RegExp(`\\b${key}\\b`).test(hostRender.slice(hostRender.indexOf('reg.add("render.tool"'))) ||
-				// keyText / keyHint come in through the shared `...hints` spread above render.tool.
-				(/\.\.\.hints/.test(hostRender) && new RegExp(`const hints = \\{[^}]*\\b${key}\\b`).test(hostRender)),
-			`pi's ToolExecutionComponent hands extension renderers \`context.${key}\`; commands/catalog.mjs's ` +
-				`render.tool must build it too, or an extension reading it sees undefined.`,
-		);
-	}
+	check(
+		"the host resolves tool renderers through pi's resolver chain",
+		/resolveToolRenderers\(name/.test(hostRender) && /resolveToolRenderers\(toolName, \(\) =>/.test(engine("modes/interactive/interactive-mode.js")),
+		`TUI draws a tool with extensionRunner.resolveToolRenderers(name, base); the host must use the same chain, ` +
+			`or extensions that take over a tool's rendering (registerToolRenderer) are ignored.`,
+	);
+	check(
+		"pi still exports the components and initTheme the host needs",
+		/ToolExecutionComponent/.test(engine("index.d.ts")) && /CustomMessageComponent/.test(engine("index.d.ts")) && /initTheme/.test(engine("index.d.ts")),
+		`index.d.ts no longer exports ToolExecutionComponent / CustomMessageComponent / initTheme.`,
+	);
+	check(
+		"the sub-renderers the host splits call/result from still exist",
+		/callRendererComponent/.test(toolExec) && /resultRendererComponent/.test(toolExec),
+		`catalog.mjs reads comp.callRendererComponent / comp.resultRendererComponent to draw the card head and body ` +
+			`separately; tool-execution.js renamed them.`,
+	);
 	check(
 		"pi gives renderResult { content, details }, and the host forwards result.details",
 		/resultRenderer\(\{ content: this\.result\.content, details: this\.result\.details \}/.test(toolExec) &&

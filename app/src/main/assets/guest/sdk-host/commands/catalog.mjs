@@ -157,79 +157,84 @@ export function register(reg, { controller }) {
     return withState(controller, { active: s.getActiveToolNames() });
   });
 
-  // 扩展注册的消息渲染器（TUI 才会调）：宿主取出来调，把 `render(width)` 的行发回 App。
-  reg.add("render.message", (args, _call) => {
+  // 渲染一律交给 pi 官方导出的 `ToolExecutionComponent` / `CustomMessageComponent`：render context、
+  // 状态、回退、`invalidate` 都是它们的实现，宿主不再自己拼（此前自拼漏了 details / 图片块 / executionStarted…）。
+  // 官方组件读的是 pi 的**全局官方主题**，所以先 `initTheme`；字体色深度由 COLORTERM 决定。
+  let themed = false;
+  const officialTheme = () => {
+    if (!themed) {
+      process.env.COLORTERM ||= "truecolor";
+      controller.sdk.initTheme("dark");
+      themed = true;
+    }
+    return globalThis[Symbol.for("@earendil-works/pi-coding-agent:theme")];
+  };
+  // 组件自己 `ui.requestRender()`（动画、定时刷新）→ 通知 App 重取这一张卡。
+  const tui = (key) => ({ requestRender: () => controller.hub.emit("render.invalidate", key) });
+
+  reg.add("render.message", (args) => {
     const s = controller.requireSession();
-    const renderer = s.extensionRunner.getMessageRenderer(str(args, "customType"));
+    const customType = str(args, "customType");
+    const renderer = s.extensionRunner.getMessageRenderer(customType);
     if (!renderer) return { lines: null, reason: "no_renderer" };
-    // 选项与 pi 的 CustomMessageComponent.rebuild 一致：expanded / outputPad / keyText / keyHint。
-    const message = { ...args.message, customType: str(args, "customType") };
-    const component = renderer(message, { expanded: Boolean(args.expanded), outputPad: 0, keyText: hints.keyText, keyHint: hints.keyHint }, controller.theme);
-    return { lines: component ? component.render(Number(args.width) || controller.surfaces.width) : null };
+    officialTheme();
+    const { CustomMessageComponent } = controller.sdk;
+    const message = { ...args.message, customType };
+    const component = new CustomMessageComponent(message, renderer, undefined, 0);
+    component.setExpanded(Boolean(args.expanded));
+    const lines = component.render(Number(args.width) || controller.surfaces.width);
+    return { lines: lines.map(String) };
   });
 
-  // 扩展注册的**工具渲染器**（`renderCall` / `renderResult`，TUI 才会调）：按行渲染，App 把行当作自己的
-  // 「带 ANSI 的行」画在工具卡里。没有渲染器的工具（含内置工具）返回 null，App 用它自己的原生卡。
-  //
-  // 渲染器要的 `context.state` 是「同一次调用的 call / result 共享的一份可变状态」（TUI 的工具行持有它），
-  // 所以按 toolCallId 存一份，封顶，免得长会话里无限长。
-  const toolStates = new Map();
-  const stateFor = (id) => {
-    let st = toolStates.get(id);
-    if (!st) {
-      st = {};
-      toolStates.set(id, st);
-      if (toolStates.size > TOOL_STATE_LIMIT) toolStates.delete(toolStates.keys().next().value);
+  // 一个 toolCallId 对应一个官方组件（它持有 renderer state / lastComponent），封顶免得长会话无限长。
+  const toolComponents = new Map();
+  const componentFor = (id, name, def, callArgs, cwd) => {
+    let c = toolComponents.get(id);
+    if (!c) {
+      c = new controller.sdk.ToolExecutionComponent(name, id, callArgs, { showImages: false, outputPad: 0 }, def, tui({ kind: "tool", toolCallId: id }), cwd);
+      toolComponents.set(id, c);
+      if (toolComponents.size > TOOL_STATE_LIMIT) toolComponents.delete(toolComponents.keys().next().value);
     }
-    return st;
+    return c;
   };
-  // pi 官方导出的 keyText / keyHint（读用户真实的快捷键配置），不再自己写桩。
-  const hints = { keyText: (...a) => controller.sdk.keyText(...a), keyHint: (...a) => controller.sdk.keyHint(...a) };
 
   reg.add("render.tool", (args) => {
     const s = controller.requireSession();
     const name = str(args, "toolName");
-    const def = s.getToolDefinition?.(name);
+    // 与 TUI 同一条解析链：扩展用 `registerToolRenderer` 注册的 resolver 先于工具自带的渲染器
+    // （interactive-mode.js getRegisteredToolDefinition）——直接取 getToolDefinition 会漏掉被 resolver 接管的工具。
+    const def = s.extensionRunner.resolveToolRenderers(name, () => s.getToolDefinition?.(name));
     if (!def || (!def.renderCall && !def.renderResult)) return { call: null, result: null, shell: null, reason: "no_renderer" };
+    officialTheme();
     const width = Number(args.width) || controller.surfaces.width;
     const id = typeof args.toolCallId === "string" && args.toolCallId ? args.toolCallId : name;
     const callArgs = args.args ?? {};
-    const result = args.result ?? null;
-    const context = {
-      ...hints,
-      args: callArgs,
-      toolCallId: id,
-      invalidate() {},
-      lastComponent: undefined,
-      state: stateFor(id),
-      cwd: s.sessionManager?.getCwd?.() ?? controller.cfg?.cwd ?? process.cwd(),
-      executionStarted: args.executionStarted !== false,
-      argsComplete: args.argsComplete !== false,
-      isPartial: Boolean(args.isPartial),
-      expanded: Boolean(args.expanded),
-      showImages: false,
-      isError: Boolean(result?.isError),
-      durationMs: Number.isFinite(args.durationMs) ? Number(args.durationMs) : undefined,
-      outputPad: 0,
-    };
-    const draw = (make) => {
+    const cwd = s.sessionManager?.getCwd?.() ?? controller.cfg?.cwd ?? process.cwd();
+    const comp = componentFor(id, name, def, callArgs, cwd);
+    comp.updateArgs(callArgs);
+    if (args.executionStarted !== false) comp.markExecutionStarted();
+    if (args.argsComplete !== false) comp.setArgsComplete();
+    if (args.result) {
+      comp.updateResult(
+        { content: args.result.content ?? [], details: args.result.details, isError: Boolean(args.result.isError), durationMs: Number.isFinite(args.durationMs) ? Number(args.durationMs) : undefined },
+        Boolean(args.isPartial),
+      );
+    }
+    comp.setExpanded(Boolean(args.expanded));
+    const whole = comp.render(width).map(String); // 触发官方的 updateDisplay
+    // 官方组件把 call / result 渲成一个整体；App 的卡片要分开画头和体，所以取它内部的两个子渲染结果。
+    const part = (child) => {
       try {
-        const component = make();
-        const lines = component ? component.render(width) : null;
-        component?.dispose?.();
+        const lines = child?.render?.(width);
         return Array.isArray(lines) ? lines.map(String) : null;
       } catch (error) {
         return [`[render failed] ${error?.message ?? error}`];
       }
     };
-    return {
-      call: def.renderCall ? draw(() => def.renderCall(callArgs, controller.theme, context)) : null,
-      result:
-        def.renderResult && result
-          ? draw(() => def.renderResult(result, { expanded: context.expanded, isPartial: context.isPartial }, controller.theme, context))
-          : null,
-      shell: def.renderShell ?? "default",
-    };
+    let call = part(comp.callRendererComponent);
+    const result = part(comp.resultRendererComponent);
+    if (!call && !result) call = whole; // 渲染器抛了、官方回退了：把官方的整体输出给 App，别让 App 当成「没有渲染器」
+    return { call, result, shell: def.renderShell ?? "default" };
   });
 }
 

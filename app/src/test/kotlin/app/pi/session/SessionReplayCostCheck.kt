@@ -1253,7 +1253,6 @@ fun main() {
         "discardEmptySessionCreatedByRestart",
         "maybeResumeLastSession",
         "resumeAttempted",
-        "continueFrom",
     )) {
         checkTrue(
             "接回不再有「事后补一条命令」的形状：$gone 已删除",
@@ -1261,6 +1260,13 @@ fun main() {
             "argv 里钉 id 是唯一的接回路径；事后 `switch_session` 会与新引擎的首帧抢会话。",
         )
     }
+    // `continueFrom` 现在有第二个合法用法：消息操作的「从这条继续」（`continueFromMessage`）。
+    // 裸标识符仍然是那套"事后接回"的形状，按词边界禁；带后缀的不算。
+    checkTrue(
+        "接回不再有「事后补一条命令」的形状：continueFrom（裸名）已删除",
+        !Regex("\\bcontinueFrom\\b").containsMatchIn(viewModelText),
+        "argv 里钉 id 是唯一的接回路径；再冒出一个 continueFrom 参数就是把旧机制带回来了。",
+    )
 
     // ------------- 10. 换运行时（App 级重启）之后还在同一段对话里
     //

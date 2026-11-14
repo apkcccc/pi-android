@@ -761,9 +761,13 @@ fun main() {
         "the reader's fallback for app.appearance.showTimestamps is off too",
         viewModel.contains("bool(\"app.appearance.showTimestamps\", false)"),
     )
+    // 2026-11-15：`UiPrefs` 跟着会话页的数据模型一起搬到了 `ui/SessionModels.kt`；
+    // 默认值这一条按**搬去之后的文件**读，否则红的是搬家，不是默认值变了。
+    val sessionModels = File(root, "app/src/main/kotlin/app/pi/ui/SessionModels.kt")
+        .takeIf { it.isFile }?.readText().orEmpty()
     check(
         "UiPrefs' own default for showTimestamps is off too",
-        viewModel.contains("val showTimestamps: Boolean = false"),
+        sessionModels.contains("val showTimestamps: Boolean = false"),
     )
     for (block in listOf("UserMessageBlock.kt", "NoticeBlock.kt")) {
         val body = File(root, "app/src/main/kotlin/app/pi/ui/blocks/$block")

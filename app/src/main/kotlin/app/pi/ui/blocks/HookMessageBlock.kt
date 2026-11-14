@@ -132,4 +132,4 @@ fun HookMessageBlock(
 private const val COLLAPSED_MESSAGE_LINES = 4
 
 /** 扩展渲染器给的消息，折叠态最多画几行。 */
-private const val COLLAPSED_RENDER_LINES = 8
+private const val COLLAPSED_RENDER_LINES = 5

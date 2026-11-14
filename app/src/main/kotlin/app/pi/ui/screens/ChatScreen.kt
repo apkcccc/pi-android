@@ -1,15 +1,5 @@
 package app.pi.ui.screens
 
-import android.animation.ValueAnimator
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.ime
@@ -17,64 +7,34 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.onSizeChanged
-import app.pi.rpc.PiResponses
 import app.pi.engine.PiEngineSession
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import app.pi.settings.readBoolean
-import app.pi.ui.blocks.PiImageCache
-import app.pi.ui.blocks.decodePiImage
-import app.pi.ui.blocks.piImageDecodeGate
-import app.pi.ui.components.PiType
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.vector.PathParser
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.runtime.produceState
-import androidx.compose.foundation.Image
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Matrix
-import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -85,18 +45,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -121,8 +75,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.material3.LocalTextStyle
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
@@ -131,27 +83,17 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import app.pi.rpc.AssistantText
-import app.pi.rpc.BranchSummary
-import app.pi.rpc.CompactionMarker
 import app.pi.rpc.DateSeparator
 import app.pi.rpc.ErrorText
-import app.pi.rpc.HookMessage
 import app.pi.rpc.ModelChange
-import app.pi.rpc.Notice
-import app.pi.rpc.SkillInvocation
 import app.pi.rpc.ThinkingBlock
-import app.pi.rpc.ToolCall
-import app.pi.rpc.ToolDiff
 import app.pi.rpc.TranscriptItem
 import app.pi.rpc.PiImage
 import app.pi.rpc.UserMessage
 import app.pi.ui.Boot
-import app.pi.ui.ExportedSession
 import app.pi.ui.NavRequest
 import app.pi.ui.PiSessionViewModel
 import app.pi.ui.earlierRowText
@@ -160,18 +102,13 @@ import app.pi.ui.blocks.LocalTranscriptRowAnchor
 import app.pi.ui.blocks.PiImageViewer
 import app.pi.ui.blocks.TranscriptRowAnchor
 import app.pi.ui.chat.BashPanel
-import app.pi.ui.chat.ChatChip
 import app.pi.ui.chat.ComposerRoute
-import app.pi.ui.chat.MentionPalette
 import app.pi.ui.chat.ChatAction
 import app.pi.ui.chat.PiFileMentions
 import app.pi.ui.chat.PiSlashCommand
-import app.pi.ui.chat.SessionExportDelivery
-import app.pi.ui.chat.SlashPalette
 import app.pi.ui.chat.TailFollow
 import app.pi.ui.chat.TailSnapshot
 import app.pi.ui.chat.TailViewport
-import app.pi.ui.chat.thinkingLabelOf
 import app.pi.ui.chat.mayLoadEarlier
 import app.pi.ui.chat.mergeRestoredQueue
 import app.pi.ui.chat.routeComposerText
@@ -182,7 +119,6 @@ import app.pi.ui.chat.itemIndexOfVisibleRow
 import app.pi.ui.chat.mayArmEarlier
 import app.pi.ui.chat.CLIENT_BUILTINS
 import app.pi.ui.chat.unsupportedReason
-import app.pi.ui.components.PiContextRing
 import app.pi.ui.render.LocalPiMarkdownImmediate
 import app.pi.ui.render.LocalPiMarkdownParsed
 import app.pi.ui.render.RowHeightCache
@@ -190,9 +126,6 @@ import app.pi.ui.render.gapFor
 import app.pi.ui.render.piMarkdownParseBudget
 import app.pi.ui.render.rememberedRowHeight
 import app.pi.ui.render.transcriptGap
-import app.pi.ui.components.PiMenu
-import app.pi.ui.components.PiMenuItem
-import app.pi.ui.components.PiMenuPlacement
 import app.pi.ui.extension.ExtensionWidgetStack
 import app.pi.ui.extension.toExtensionPalette
 import app.pi.ui.extension.ExtensionPanelCard
@@ -202,12 +135,8 @@ import app.pi.ui.extension.HEADER_COLLAPSED_ROWS
 import app.pi.ui.extension.PLACEMENT_BELOW
 import app.pi.ui.theme.PiShapes
 import app.pi.ui.theme.PiSpacing
-import app.pi.ui.theme.PiProseFamily
 import app.pi.ui.theme.PiTheme
-import app.pi.ui.theme.engineStateTone
-import app.pi.ui.theme.stateToneColor
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.launch
 
 /**
@@ -300,6 +229,7 @@ fun ChatScreen(
     )
 }
 
+
 /**
  * 对话页顶栏的图标动作是 [ChatTopBarAction]（48dp 热区 / 24dp 字形），不是别处用的
  * `PiTopBarIcon`（30dp 框 / 17dp 字形）：56 高的对话页顶栏只放三枚 24dp 字形，
@@ -308,11 +238,14 @@ fun ChatScreen(
 /** `Icon`'s default box, which is what the 「加载更早」 row's glyph measures at. */
 private val EARLIER_ROW_ICON = 24.dp
 
+
 /** The 6 dp between that glyph and its label (`Spacer(Modifier.width(6.dp))`). */
 private val EARLIER_ROW_ICON_GAP = 6.dp
 
+
 /** The row's own vertical padding (`padding(vertical = 8.dp)`), 8 top and 8 bottom. */
 private val EARLIER_ROW_PADDING = 8.dp
+
 
 /**
  * 「加载更早」 drawn as an **overlay** over the transcript list, not as its item 0.
@@ -354,6 +287,7 @@ private fun EarlierRowsRow(
     }
 }
 
+
 /**
  * The height that row occupies, in dp — computed **before** the list is laid out, because two
  * things depend on it and both would otherwise need a second layout pass: the band the list
@@ -394,9 +328,10 @@ private fun earlierRowHeight(text: String): Dp {
     return with(density) { heightPx.toDp() }
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ChatBody(
+internal fun ChatBody(
     state: PiSessionViewModel.UiState,
     session: PiSessionViewModel,
     onOpenSessions: () -> Unit,
@@ -2488,6 +2423,7 @@ private fun ChatBody(
     }
 }
 
+
 /**
  * The palette is open exactly while the first token is still being typed: the
  * draft starts with `/` and no space has been typed yet. Returns the query, or
@@ -2499,6 +2435,7 @@ internal fun paletteQueryOf(draft: String): String? {
     if (trimmed.contains(' ')) return null
     return trimmed.removePrefix("/")
 }
+
 
 /**
  * The 0-based index of the user-message row [key] among the list's user-message
@@ -2525,1153 +2462,6 @@ private fun userMessageOrdinal(items: List<TranscriptItem>, key: String): Int {
     return -1
 }
 
-/**
- * The transcript's search results for one query.
- *
- * Two shapes of the same answer, because the two readers want different operations:
- * [ordered] is the navigation order (`cursor / total` and the reveal), and [present] is
- * the per-row membership test the transcript runs once per rendered row per frame.
- *
- * A `List<Int>` served both before this, and the membership half was a linear scan of
- * every match in the session — a session with a common word in it has thousands of them,
- * and the transcript asks per visible row. Both halves are built in one pass over the
- * transcript (see `ChatBody`'s match scan).
- */
-private data class SearchHits(val ordered: List<Int>, val present: Set<Int>) {
-    companion object {
-        /** A blank query, or one that matched nothing. */
-        val None = SearchHits(emptyList(), emptySet())
-    }
-}
-
-/**
- * Whether [item] is a search result for [query] — the same coverage the old
- * `searchTextOf` had, asked as a predicate instead of built as a string.
- *
- * (`mergeRestoredQueue` — pi's queue/editor merge rule, shared by Stop and the
- * queue row's dequeue — lives in `ui/chat/QueueRestore.kt`: both actions must merge
- * identically, and a pure function is the only form
- * `tools/run-app-pure-checks.sh` can execute, because this file imports Compose.)
- *
- * Every rendered block kind is covered, because a search that silently skips a
- * kind would report "no matches" for text the user can see. Kinds with no text of
- * their own (a date separator) contribute nothing.
- *
- * **Why a predicate and not a string.** The old form joined each row's parts and then
- * ran `contains` on the result, which copied a tool's whole output — the largest thing
- * in a transcript — once per row per scan (measured: 0.86 ms per 20 KB row on a desktop
- * JVM). Where a row's parts were joined with a newline the two forms are *identical*,
- * because the query cannot contain one: the search field is `singleLine`
- * (`ChatScreen.kt`'s `SearchBar`), so a match could never have straddled the separator.
- * The joins that remain are the tiny ones, kept as they were so the behaviour of a `/`
- * or newline inside a query is unchanged rather than accidentally "cleaned up".
- */
-private fun searchHits(item: TranscriptItem, query: String): Boolean = when (item) {
-    is UserMessage -> item.text.hits(query)
-    is AssistantText -> item.text.hits(query)
-    is ThinkingBlock -> item.text.hits(query)
-    is ToolCall -> item.toolName.hits(query) || item.argsSummary.hits(query) || item.output.hits(query)
-    is ToolDiff -> item.path.hits(query) || item.diffText.hits(query)
-    is CompactionMarker -> item.summary.hits(query)
-    is BranchSummary -> item.summary.hits(query)
-    is HookMessage -> item.markdown.hits(query)
-    is ModelChange -> listOfNotNull(item.provider, item.modelId).joinToString("/").hits(query)
-    is SkillInvocation -> listOf(item.skillName, item.body).joinToString("\n").hits(query)
-    is ErrorText -> listOfNotNull(item.message, item.detail).joinToString("\n").hits(query)
-    is Notice -> item.text.hits(query)
-    is DateSeparator -> false
-}
-
-/** pi's `searchMatch` is a case-insensitive substring test over the row's text. */
-private fun String.hits(query: String): Boolean = contains(query, ignoreCase = true)
-
-/**
- * One full pass of the search over [items]: the ordered hits and the membership set the
- * transcript reads per rendered row.
- *
- * Extracted so it can be run **off the frame thread** — the caller dispatches it to
- * `Dispatchers.Default` and publishes the result (see `ChatBody`'s scan effect). It is a
- * pure function of its three arguments, over an immutable list, so nothing is read that
- * the dispatcher change could make stale.
- *
- * A block the user asked to hide cannot be a search result: the row is not on screen to
- * scroll to.
- */
-private fun scanSearchHits(
-    items: List<TranscriptItem>,
-    query: String,
-    hideThinking: Boolean,
-): SearchHits {
-    val ordered = ArrayList<Int>()
-    val present = HashSet<Int>()
-    items.forEachIndexed { index, item ->
-        if (hideThinking && item is ThinkingBlock) return@forEachIndexed
-        if (searchHits(item, query)) {
-            ordered += index
-            present += index
-        }
-    }
-    return SearchHits(ordered, present)
-}
-
-/**
- * The transcript's search bar, transcribed from v2's `SearchState` bar
- * (`direction-b-v2.html:2755-2767`, i.e. phone14).
- *
- * v2 draws **one strip** under the AppBar:
- *
- * ```
- * 容器      padding:8px 14px, border-bottom:1px borderMuted, background:surf-dim
- * 输入条    height:36（本页取 40，与设置页搜索框同高，见 SEARCH_BAR_HEIGHT）,
- *           border:1px borderAccent, radius:9, background:surf-low,
- *           padding:0 10px, gap:8
- *   ·       search 字形 15 muted
- *   ·       查询文本 mono t13 text
- *   ·       `3 / 8` mono t12 muted
- *   ·       「关闭查找」 t12 muted
- * 动作行    margin-top:8, gap:8: `↑ 上一个匹配` / `↓ 下一个匹配` chips + 右侧说明 t12 muted
- * ```
- *
- * The app used to draw an `OutlinedTextField` plus three Material `IconButton`s —
- * two controls' worth of chrome, an M3 field outline the board does not have, and two
- * icon buttons whose only label was a content description. The **mechanism** is
- * unchanged and is still pi's: the query is the same string, the two arrows move
- * `searchCursor`, and the count keeps pi's `cursor / total` reading.
- *
- * What is deliberately *not* v2 is the colouring of the hits themselves: the current
- * match is filled with pi's `searchMatchBg` and ringed in `searchMatchText`, the
- * others carry `searchMatchBg` alone (`ui/screens/ChatScreen.kt`, the row modifier in
- * the transcript). Those two are pi's own search tokens and 09's highlight-fidelity
- * record settled them; v2's prototype stands in `selectedBg`/`surf-high` there, which
- * the parent's ruling keeps out. This bar therefore borrows v2's *structure* only.
- *
- * The trailing sentence is v2's, verbatim (`direction-b-v2.html:2766`).
- */
-@Composable
-private fun SearchBar(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    matchCount: Int,
-    cursor: Int,
-    onPrevious: () -> Unit,
-    onNext: () -> Unit,
-    onClose: () -> Unit,
-) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            // `surf-dim` is the chrome tone the AppBar uses; the strip is chrome,
-            // not content.
-            .background(MaterialTheme.colorScheme.surfaceDim)
-            .padding(horizontal = PiSpacing.pageHorizontal, vertical = 8.dp),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(SEARCH_BAR_HEIGHT)
-                .clip(RoundedCornerShape(9.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                .border(1.dp, PiTheme.palette.borderAccent, RoundedCornerShape(9.dp))
-                .padding(horizontal = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Search,
-                contentDescription = null,
-                modifier = Modifier.size(15.dp),
-                tint = PiTheme.palette.muted,
-            )
-            BasicTextField(
-                value = query,
-                onValueChange = onQueryChange,
-                modifier = Modifier.weight(1f),
-                singleLine = true,
-                // `06 §2` 机器语言层: a search query over machine output is typed in the
-                // machine face, and v2 sets it `mono t13`.
-                textStyle = PiTheme.text.mono.copy(color = MaterialTheme.colorScheme.onSurface),
-                cursorBrush = SolidColor(PiTheme.palette.accent),
-                decorationBox = { inner ->
-                    Box {
-                        if (query.isEmpty()) {
-                            Text(
-                                text = "在对话里查找",
-                                style = PiTheme.text.mono,
-                                color = PiTheme.palette.muted,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        inner()
-                    }
-                },
-            )
-            Text(
-                text = if (matchCount == 0) {
-                    "0 / 0"
-                } else {
-                    "${cursor.coerceIn(0, matchCount - 1) + 1} / $matchCount"
-                },
-                style = PiTheme.text.monoSmall,
-                color = PiTheme.palette.muted,
-                maxLines = 1,
-            )
-            Text(
-                text = "关闭查找",
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .clickable(onClickLabel = "关闭查找", onClick = onClose)
-                    .padding(horizontal = 4.dp, vertical = 4.dp),
-                style = PiTheme.text.meta,
-                color = PiTheme.palette.muted,
-                maxLines = 1,
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            // A disabled end of the transcript is drawn muted rather than removed: the
-            // pair is a reading of "there is nothing further this way", and a missing
-            // chip would move the other one.
-            SearchChip("↑", "上一个匹配", enabled = matchCount > 0, onClick = onPrevious)
-            SearchChip("↓", "下一个匹配", enabled = matchCount > 0, onClick = onNext)
-            Spacer(Modifier.weight(1f))
-            Text(
-                text = "当前命中给底 + 亮，其余命中只给底",
-                style = PiTheme.text.meta,
-                color = PiTheme.palette.muted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-/**
- * 悬浮输入框的几何（用户 2026-10-26 的裁决）。
- *
- * 圆角 26、左右 12、底 8；描边平时 1.5、聚焦 2，150 ms 过渡；运行中只让**现有描边
- * 颜色**的 alpha 在 1 → 0.45 之间呼吸（1.6 s，`FastOutSlowInEasing`，
- * `RepeatMode.Reverse`），聚焦时暂停、进出各 150 ms，宽度不跟着动。系统关掉动画时
- * 不呼吸。颜色来源一行没改。
- *
- * 工具行从左到右：`/`、回形针、⋮、流式时「引导 / 后续」、弹性空白、上下文环 20 dp
- * （2 dp 笔、30 dp 热区）、模型 chip（28 高、72–140 宽、13 sp Medium、无底色、中间省略）、
- * 思考等级文字（宽度够时）、发送 40 dp。
- *
- * 尺寸 token 在 `PiSpacing`（`composer*`）里，屏幕侧只引用它们；这里剩下的是**时间与
- * 行数**，不是 dp：150 ms 的描边/进出、1.6 s 的呼吸、6 行上限、20 sp 行高。
- * 列表底边留白 = 输入框实测高度 + [PiSpacing.composerListClearance]；输入框上方的
- * 渐隐 = [PiSpacing.composerGradientFade]。
- */
-private const val COMPOSER_BORDER_MS = 150
-private const val COMPOSER_FADE_MS = 150
-private const val COMPOSER_PULSE_MS = 1600
-private const val COMPOSER_PULSE_MIN = 0.45f
-private const val COMPOSER_MAX_LINES = 6
-
-
-/**
- * The search input row's height: **40**, which is the number `06 §2` gives the search
- * field (`PiSettingsMetrics.searchFieldHeight` / 「搜索框 40 高」) and therefore the
- * height the settings page's own search field draws.
- *
- * v2's in-transcript strip was `height:36` (`direction-b-v2.html:2756`). The board's
- * prototype is the only place that 36 appears; every other search field in this app is
- * 40, so the strip takes 40 and the two searches now type into the same-size target.
- */
-private val SEARCH_BAR_HEIGHT = 40.dp
-
-/**
- * One search action chip — v2's `Chip` (`direction-b-v2.html:605-617`) as the two
- * match arrows use it (`:2763-2764`): `height:26`, `border-radius:999`, a
- * `1px borderMuted` ring on a transparent ground, a glyph in the muted tone and the
- * label in the text colour.
- *
- * Geometry, ring, label role and the glyph tone are [ChatChip]'s now; this wrapper only
- * keeps the arrows' own semantics — a search with no match is a **disabled** chip, so it
- * draws muted and takes no tap (`muted` plus a null `onClick`).
- */
-@Composable
-private fun SearchChip(glyph: String, label: String, enabled: Boolean, onClick: () -> Unit) {
-    ChatChip(
-        text = label,
-        glyph = glyph,
-        muted = !enabled,
-        onClick = if (enabled) onClick else null,
-        onClickLabel = label,
-    )
-}
-
-/**
- * Put a picked non-image file where the agent can read it, and answer with the
- * workspace-relative path to insert.
- *
- * ## Why a copy, and not a device path
- *
- * This is the implementation of the sentence that used to sit above the *old* code
- * as its stated design — 「把文件放到 agent 能读到的地方」 — and which that code did
- * not follow: it guessed a phone path instead (`/storage/emulated/0/…`, a
- * `_data` column, `raw:`), and on any source that would not answer with one it failed
- * with 「这个来源没有可用的文件路径」. On Android 10+ that is nearly every source: the
- * system picker hands back a `content://` URI from Files/Downloads/Recent/cloud
- * providers, `_data` is unset for a virtual document, and a cloud provider has no
- * filesystem path at all. The user's report — 「除了图片，其他的东西我点完发送，它说
- * 『这个来源没有可用的文件路径』」 — is that failure, and it is deterministic rather
- * than intermittent.
- *
- * A guessed path was also only ever *half* a fix. The proot bind makes
- * `/storage/emulated/0/…` the same spelling inside the guest, but the guest runs as
- * this app's uid under `untrusted_app` (`bridge/DeviceWorkspace.kt:54-58`): a shared
- * path is visible and may still be unreadable, and the app cannot tell the difference
- * from here. The failure then happens *inside pi*, about a file the user never named —
- * strictly worse than the error above.
- *
- * A copy has neither problem. The workspace is app-private storage that the engine
- * already mounts (`PtyLauncher.workspaceHost`), the app writes the bytes itself, and
- * the path handed over is one the guest demonstrably owns. It is also the shape pi's
- * own terminal uses for a dropped file: the drop becomes a **path in the prompt**, not
- * a payload.
- *
- * The path is **relative to the workspace** (`attachments/report.pdf`), which is what
- * `@` mentions insert too (`ui/chat/PiFileMentions.kt`). Relative resolves against the
- * engine's cwd, which *is* the workspace, so the guest/host "one directory, two
- * spellings" trap (`GuestWorkspacePath`) never arises. The old comment's worry that
- * the two shapes would collide is answered by making them the same shape.
- *
- * ## What the user is told
- *
- * Success names the file it placed, because the workspace is a directory the user can
- * see from 工作区 and an unexplained new file there is worse than the copy. Failure
- * gives the actual cause ([WorkspaceCopy]) and inserts **nothing** — never a
- * `content://` string and never a guessed path.
- *
- * ## The bound is the **disk**, not the message
- *
- * This used to be bounded by [AttachmentBudget.MESSAGE_BYTES] (23.95 MB) — the number that
- * exists because a message's inline base64 must fit inside one JSONL record. That number
- * has nothing to do with this path: what is produced here is a **relative path in the
- * composer** (`attachments/<name>`, a dozen bytes) and the agent reads the file off disk
- * itself. The user's report is the consequence — 「发个文件还说太大，复制不进去，太傻逼了」:
- * a 30 MB PDF was refused, and the copy is exactly how it was supposed to become readable.
- *
- * So the only bound here is free space, and it is checked twice: up front and then against
- * every chunk through [AttachmentBudget.workspaceSpace], with
- * [AttachmentBudget.WORKSPACE_SPACE_MARGIN_BYTES] left unspent. `StatFs` is read **once**
- * per copy (`availableBytesOf`) and the running total is subtracted locally — this file is
- * the only writer of the target, so a second syscall per chunk would buy nothing but
- * latency on a 2 GB stream. A filesystem that will not report its free space is
- * [AttachmentBudget.DiskSpace.Unknown]: the copy proceeds, and a genuine failure surfaces
- * as [WorkspaceCopy.WriteFailed].
- *
- * The copy is still **streamed**: one 64 KiB buffer, so a 2 GB provider document never
- * lives in memory. What changed is only which question stops it.
- */
-private fun copyIntoWorkspace(context: Context, uri: android.net.Uri): WorkspaceCopy {
-    // Opened first, so a source that will not open is [WorkspaceCopy.Unreadable] rather
-    // than a directory problem — the same order, and the same two failure arms, as before.
-    val source = runCatching { context.contentResolver.openInputStream(uri) }.getOrNull()
-        ?: return WorkspaceCopy.Unreadable
-    return source.use { input -> copyAttachment(context, input, displayNameOf(context, uri)) }
-}
-
-/**
- * The same copy, from bytes the caller already holds: the **inline fallback** for a picked
- * image ([fallbackInline] in the picker callback).
- *
- * It exists because an image that cannot be inlined is still a file the agent should be
- * able to read, and because the bytes in hand are the user's own pick — writing the
- * *re-encoded* picture instead would hand the agent a different file than the one that was
- * chosen. The name goes through the same sanitiser and the same
- * `attachments/`-containment guard as any other copy, and the space rule is the same one.
- */
-private fun copyBytesIntoWorkspace(context: Context, bytes: ByteArray, displayName: String?): WorkspaceCopy =
-    java.io.ByteArrayInputStream(bytes).use { copyAttachment(context, it, displayName) }
-
-/** Where one copy will land, after every guard has passed. */
-private class AttachmentTarget(val directory: java.io.File, val file: java.io.File, val relativePath: String)
-
-/**
- * The file one copy will land in, or null when the workspace cannot be created or the name
- * would not land inside `attachments/`.
- *
- * Both guards are unchanged and neither depends on the other: the name comes from
- * [app.pi.ui.chat.sanitizeAttachmentName] and [app.pi.ui.chat.uniqueAttachmentName], and
- * then the **canonical path** of the file about to be written must be exactly
- * `<attachments>/<that name>`. A name that escapes the directory is a path this app would
- * be writing on a stranger's behalf.
- */
-private fun attachmentTarget(context: Context, displayName: String?): AttachmentTarget? {
-    val directory = java.io.File(app.pi.runtime.PtyLauncher.workspaceHost(context), ATTACHMENTS_DIR)
-    if (!directory.isDirectory && !directory.mkdirs()) return null
-    val name = app.pi.ui.chat.uniqueAttachmentName(
-        app.pi.ui.chat.sanitizeAttachmentName(displayName),
-    ) { candidate -> java.io.File(directory, candidate).exists() }
-    val target = java.io.File(directory, name)
-    val root = runCatching { directory.canonicalPath }.getOrNull() ?: return null
-    val resolved = runCatching { target.canonicalPath }.getOrNull() ?: return null
-    if (resolved != "$root${java.io.File.separator}$name") return null
-    return AttachmentTarget(directory, target, "$ATTACHMENTS_DIR/$name")
-}
-
-/**
- * Stream [input] into a new file under `attachments/`, bounded only by free space.
- *
- * The space reading is taken once, before the first byte is written ([availableBytesOf]);
- * the running total is then compared against it chunk by chunk. That is the honest reading
- * for a number the user is shown: if some other writer fills the disk while this copy runs,
- * the `write` throws and the answer is [WorkspaceCopy.WriteFailed] — never a made-up figure.
- */
-private fun copyAttachment(context: Context, input: java.io.InputStream, displayName: String?): WorkspaceCopy {
-    val target = attachmentTarget(context, displayName) ?: return WorkspaceCopy.WriteFailed
-    val available = availableBytesOf(target.directory)
-    val margin = AttachmentBudget.WORKSPACE_SPACE_MARGIN_BYTES
-    val streamed = runCatching {
-        target.file.outputStream().use { sink -> copyStreamed(input, sink, available, margin) }
-    }.getOrNull()
-    return when (streamed) {
-        is Streamed.Done -> WorkspaceCopy.Copied(target.relativePath)
-
-        // **No half file is ever left behind**, for either reason: the user was told this
-        // file did not make it, so a truncated copy in 工作区 would be a lie. (Only the
-        // over-limit arm deleted before; a mid-write failure used to leave its partial.)
-        is Streamed.NoSpace -> {
-            runCatching { target.file.delete() }
-            WorkspaceCopy.OutOfSpace(
-                neededBytes = streamed.neededBytes,
-                availableBytes = streamed.availableBytes,
-                marginBytes = streamed.marginBytes,
-            )
-        }
-
-        null -> {
-            runCatching { target.file.delete() }
-            WorkspaceCopy.WriteFailed
-        }
-    }
-}
-
-/** What one [copyStreamed] did. */
-private sealed interface Streamed {
-    data object Done : Streamed
-
-    /**
-     * The disk ran out at [neededBytes] (a **lower bound** — the source had that many
-     * bytes to give). [availableBytes] and [marginBytes] are the two numbers the sentence
-     * needs, carried rather than recomputed.
-     */
-    data class NoSpace(val neededBytes: Long, val availableBytes: Long, val marginBytes: Long) : Streamed
-}
-
-/**
- * The streaming loop: one 64 KiB buffer, and [AttachmentBudget.workspaceSpace] asked before
- * every write.
- *
- * `availableBytes` is the free space read once before the copy started; `total` is what has
- * been written. The question asked is about the **next** chunk (`total + read`), so a chunk
- * is never written into the margin. `null` means the filesystem would not say, and then no
- * chunk is refused here.
- */
-private fun copyStreamed(
-    input: java.io.InputStream,
-    sink: java.io.OutputStream,
-    availableBytes: Long?,
-    marginBytes: Long,
-): Streamed {
-    val buffer = ByteArray(COPY_BUFFER_BYTES)
-    var total = 0L
-    while (true) {
-        val read = input.read(buffer)
-        if (read < 0) return Streamed.Done
-        if (read == 0) continue
-        val needed = total + read
-        when (val space = AttachmentBudget.workspaceSpace(needed, availableBytes, marginBytes)) {
-            AttachmentBudget.DiskSpace.Room, AttachmentBudget.DiskSpace.Unknown -> {
-                sink.write(buffer, 0, read)
-                total = needed
-            }
-            is AttachmentBudget.DiskSpace.Insufficient -> return Streamed.NoSpace(
-                neededBytes = space.neededBytes,
-                availableBytes = space.availableBytes,
-                marginBytes = marginBytes,
-            )
-        }
-    }
-}
-
-/**
- * Free bytes on the filesystem [directory] sits on, or null when it cannot be read.
- *
- * `StatFs` on the directory itself, not on the workspace root or the app's `filesDir`: the
- * attachments directory is where the bytes land, and on a device with an adopted external
- * `filesDir` those are not necessarily the same filesystem. A reading of 0 or a throw is
- * reported as **unknown** rather than as "no space" — an unreadable number must not become
- * a refusal (`RuntimeSpaceBudget.shortfall` makes the same call for the same reason).
- */
-private fun availableBytesOf(directory: java.io.File): Long? = runCatching {
-    android.os.StatFs(directory.path).availableBytes.takeIf { it > 0L }
-}.getOrNull()
-
-/** One chunk of a workspace copy. 64 KiB, the same size the old bounded copy used. */
-private const val COPY_BUFFER_BYTES = 64 * 1024
-
-/** The picker's own name for a document, or null when the provider will not say. */
-private fun displayNameOf(context: Context, uri: android.net.Uri): String? = runCatching {
-    context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
-        ?.use { cursor ->
-            val column = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-            if (column < 0 || !cursor.moveToFirst()) null else cursor.getString(column)
-        }
-}.getOrNull()?.takeIf { it.isNotBlank() }
-
-/** Where picked non-image files are placed inside the workspace. */
-private const val ATTACHMENTS_DIR = "attachments"
-
-/** One picked file that was put into the workspace. */
-private sealed interface WorkspaceCopy {
-    /** The workspace-relative path to insert, e.g. `attachments/report.pdf`. */
-    data class Copied(val relativePath: String) : WorkspaceCopy
-
-    /** The provider would not open the document: permission, or it is gone. */
-    data object Unreadable : WorkspaceCopy
-
-    /**
-     * The disk filled up (or was already too full to keep
-     * [AttachmentBudget.WORKSPACE_SPACE_MARGIN_BYTES] spare); the partial file was removed.
-     *
-     * Not a size limit: this path's only bound is free space, and the numbers come from the
-     * measurement that stopped the copy rather than from a constant.
-     */
-    data class OutOfSpace(
-        val neededBytes: Long,
-        val availableBytes: Long,
-        val marginBytes: Long,
-    ) : WorkspaceCopy
-
-    /** The workspace could not be created, or the copy failed — disk full, read-only. */
-    data object WriteFailed : WorkspaceCopy
-}
-
-/**
- * 输入框工具行里的模型 chip（2026-10-26：从顶栏挪下来）。
- *
- * 顶栏把宽度还给会话标题；模型名现在和环 / 发送放在同一条能看见输入状态的行里。
- * **没有底色**：纯文字 + `▾`，13sp Medium 无衬线，视觉高 28；只有按下时才有
- * 圆角 pill 的涟漪（`onSurface` 的 12%，M3 ripple 的 pressed alpha）。文字取色
- * 逻辑原样不动（`palette.text`），未选中态也没有边框。最小 72，最大由
- * `BoxWithConstraints` 按剩余宽度算（上限 140）。
- *
- * 长 id **从中间省略**：`deepseek-v4.1-flash-1017` 的区别在尾巴，从末尾省略只剩
- * 一串 `deepseek-v4…`，分不出是哪一个。Compose 1.8 的
- * `TextOverflow.MiddleEllipsis` 对单行可用（多行会退回 Clip），这里 maxLines = 1。
- */
-@Composable
-private fun ComposerModelChip(
-    label: String?,
-    maxWidth: Dp,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .height(PiSpacing.composerModelChipHeight)
-            .widthIn(
-                min = PiSpacing.composerModelChipMinWidth,
-                max = maxWidth,
-            )
-            .clip(RoundedCornerShape(percent = 50))
-            // 无底色：只有按下时的 pill 形涟漪，颜色 onSurface（M3 ripple 按
-            // pressed alpha 12% 画），不再有 surfaceContainerHigh 的灰块。
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(color = MaterialTheme.colorScheme.onSurface),
-                onClickLabel = "选择模型",
-                onClick = onClick,
-            )
-            .padding(horizontal = PiSpacing.inner),
-    ) {
-        Text(
-            text = label ?: "选择模型",
-            // 右边给 `▾` 留出位置；文字自己的 max 由 Box 的 maxWidth 约束，超长时
-            // MiddleEllipsis 在**中间**断开，尾巴（版本/日期）仍然可见。
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(end = PiSpacing.cardPadding + PiSpacing.tiny),
-            style = PiType.chipLabel,
-            color = PiTheme.palette.text,
-            maxLines = 1,
-            overflow = TextOverflow.MiddleEllipsis,
-        )
-        Text(
-            text = "▾",
-            modifier = Modifier.align(Alignment.CenterEnd),
-            style = PiType.chipLabel,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-/**
- * How many queued-message lines [QueueRow] draws before it stops.
- *
- * pi prints every queued message (`updatePendingMessagesDisplay`,
- * `interactive-mode.js:3873-3889`); the cap is this screen's, and it is what keeps a
- * long queue from walking the composer up the screen. Nothing is hidden by it: the
- * two count chips above the lines are the complete reading.
- */
-private const val PENDING_MESSAGE_LINES = 2
-
-/**
- * What is waiting behind the running turn, plus the one action pi offers on it.
- *
- * pi draws the same thing above its editor (`updatePendingMessagesDisplay`,
- * `interactive-mode.js:3873-3889`): one `dim` line per queued message —
- * `Steering: ${message}` (`:3879`) and `Follow-up: ${message}` (`:3883`) — plus one
- * hint, `↳ <key> to edit all queued messages` (`:3887`), because
- * `app.message.dequeue` restores **all** of them (`restoreQueuedMessagesToEditor`,
- * `:3891-3910`) and `clear_queue` has no per-message form
- * (`rpc-types.d.ts:34-36`). This row keeps the app's existing count chips and adds
- * that one action; it deliberately does not pretend each message can be taken back
- * alone, because nothing on the wire can do that.
- *
- * ## The message lines
- *
- * The text is pi's own. `queue_update` carries `{steering: string[],
- * followUp: string[]}` (`core/agent-session.js:655`; emitted on a steer enqueue at
- * `:1767`, on a follow-up at `:1783`, and by `clearQueue` at `:1920`) and RPC
- * forwards the whole event verbatim (`modes/rpc/rpc-mode.js:265-270`). The app used
- * to keep only `.size`, which left the queue the one state whose *content* the user
- * could not read — and since a queued message is deliberately not drawn in the
- * transcript until pi delivers it (`PiEngineSession.prompt`), the count was all
- * there was. The reading of each line is pi's too: steering first and then
- * follow-ups (the two loops at `interactive-mode.js:3878-3885`), each truncated to a
- * single visual line (`TruncatedText(text, 1, 0)` at `:3880`/`:3884`).
- *
- * `PiTheme.palette.dim` is the same token pi paints these lines with —
- * `theme.fg("dim", …)` at `:3879`/`:3883`/`:3887` — and it is resolved from the
- * user's own theme file (`PiThemeFiles.kt:1020`, the `dim` key), so a theme switch
- * moves both together. pi draws these lines on its canvas; this app now floats them on a
- * `surfaceContainerLow` card at the same 12 dp edge as the composer, because the composer
- * itself floats — bare lines over the transcript would read as debris rather than as a
- * queue waiting above the input box. At most [PENDING_MESSAGE_LINES] are drawn, unlike
- * pi's uncapped list.
- *
- * v2's `QueueRow` (`direction-b-v2.html:1381-1390`, phone11/phone12) is the shape of
- * the count row: a `⇢` chip for the steering count and a `⇣` chip for the follow-up
- * count — the symbol is the queue's own third channel, coloured by meaning (`⇢`
- * warning, `⇣` muted) while the words and the number stay in the normal text colour
- * — and 「收回并编辑」 in the accent at the far right. The app used to print the two
- * counts as bare words in surface-coloured pills, which left the queue the only state
- * on the screen without a symbol. The v2 board also draws a per-message card carrying
- * its own 「编辑」 (`direction-b-v2.html:2702-2718`); that half is **not** built,
- * because a per-message dequeue does not exist on the wire. The ruling is
- * `design/ui-refactor/14-illustration-and-queue-diff.md:230` option (a), and the
- * message text itself was adjudicated in row 6 of that table (`:181`).
- */
-/** 输入框上方的一行状态卡：一句话 + 一个文字动作。队列行、压缩中止共用同一套外观。 */
-@Composable
-internal fun StatusActionRow(text: String, actionLabel: String, onAction: () -> Unit) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = PiSpacing.composerPageMargin)
-            .padding(bottom = PiSpacing.small),
-        shape = PiShapes.card,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(PiSpacing.inline),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = text,
-                modifier = Modifier.weight(1f),
-                style = PiTheme.text.meta,
-                color = PiTheme.palette.dim,
-            )
-            Text(
-                text = actionLabel,
-                modifier = Modifier
-                    .clickable(onClickLabel = actionLabel, onClick = onAction)
-                    .padding(horizontal = PiSpacing.small, vertical = PiSpacing.tiny),
-                style = PiTheme.text.meta,
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
-    }
-}
-
-@Composable
-internal fun QueueRow(
-    steering: Int,
-    followUp: Int,
-    steeringTexts: List<String>,
-    followUpTexts: List<String>,
-    onRestore: () -> Unit,
-) {
-    // pi's order, capped by [PENDING_MESSAGE_LINES]. Built here rather than in the
-    // caller so the two lists cannot be paired with the wrong counts.
-    //
-    // A blank text is skipped rather than drawn as an empty line. An attachment-only
-    // mid-turn message queues with an empty string — `_queueSteer` pushes the *text*
-    // (`core/agent-session.js:1765-1766`) and this app offers 引导 for an attachment
-    // with no caption (the composer's `canSteer`), a state official pi cannot reach
-    // at all because its submit rejects empty text
-    // (`interactive-mode.js:2542-2544`). Skipping keeps such a queue showing exactly
-    // what it showed before these lines existed: the count chip. The gap behind it —
-    // a queued attachment cannot be taken back, because `clear_queue` returns
-    // `string[]` only (`rpc-types.d.ts:194-199`) — is already recorded and needs a
-    // product ruling: `design/ui-refactor/14-illustration-and-queue-diff.md:187` row 12.
-    val pendingLines = buildList {
-        steeringTexts.filter { it.isNotBlank() }.forEach { add("引导：$it") }
-        followUpTexts.filter { it.isNotBlank() }.forEach { add("后续：$it") }
-    }.take(PENDING_MESSAGE_LINES)
-    // 悬浮输入框的邻居：同一条 12 dp 边、同一族的圆角卡片，叠在输入框上方。
-    // 输入框浮起来之后，再把这几行裸文字直接画在聊天流上会像悬空的碎片 —— 给它一张
-    // 和输入框同色的底，队列才读成"在输入框上面等着"，而不是"聊天流里的几行字"。
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = PiSpacing.composerPageMargin)
-            .padding(bottom = 6.dp),
-        shape = PiShapes.card,
-        // 比输入框（surfaceContainerLow）高一级：两张卡叠在一起时，队列是**浮在**
-        // 输入框上面的那一张，不该和它融成一块。
-        color = MaterialTheme.colorScheme.surfaceContainer,
-    ) {
-    Column(
-        Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(PiSpacing.tiny),
-    ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            // The two words are pi's two waiting modes and are **not** synonyms:
-            // 引导 is `steeringMode`/steer (this turn is steered by the message: pi
-            // delivers it after the turn's tool calls finish and before the next model
-            // call, `core/agent-session.js:1741-1742`), 后续 is `followUpMode`/followUp
-            // (processed once the agent would otherwise stop, `:1753-1754`). The glyphs
-            // and tones are the queue's own third channel (`06 §4`: `⇢` warning,
-            // `⇣` muted). The words are the same two the composer chips and the settings
-            // page use, and the same two pi prints above its editor
-            // (`interactive-mode.js:3881`/`:3885`).
-            if (steering > 0) QueueChip(glyph = "⇢", tone = PiTheme.palette.warning, text = "引导 $steering")
-            if (steering > 0 && followUp > 0) Spacer(Modifier.width(PiSpacing.inline))
-            if (followUp > 0) QueueChip(glyph = "⇣", tone = PiTheme.palette.muted, text = "后续 $followUp")
-            Spacer(Modifier.weight(1f))
-            // The consequence, not the mechanism: the text goes back into the input box
-            // and the turn that is running is not touched.
-            Text(
-                "收回并编辑",
-                modifier = Modifier
-                    .clickable(onClickLabel = "收回并编辑", onClick = onRestore)
-                    .padding(horizontal = 6.dp, vertical = 3.dp),
-                style = PiTheme.text.meta,
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
-        // One read-only line per queued message, in pi's `dim` and on the canvas —
-        // the same shape as official, and the only place the user can read what is
-        // actually waiting (`PiThemeFiles.kt:1020` resolves `dim` from their theme).
-        pendingLines.forEach { line ->
-            Text(
-                text = line,
-                modifier = Modifier.fillMaxWidth(),
-                style = PiTheme.text.meta,
-                color = PiTheme.palette.dim,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-    }
-}
-
-/**
- * One count chip: `06 §2` 的 chip（高 26 圆角 999），加上队列自己的符号。
- *
- * Both halves are monospace — a queue count is a machine reading, and the symbol
- * belongs to the machine face in v2 too (`<Chip glyph="⇢" … mono>`). The two counts
- * are the family's one pair with a **per-glyph tone** (`⇢` warning, `⇣` muted), which
- * is what [ChatChip]'s `glyphTone` carries; the words and the number stay in the text
- * colour. Its `surfaceContainerHigh` fill is gone: the chip is the same `1px
- * borderMuted` ring on the page ground as the model and search chips, which is what
- * `06 §2` draws and what made this one's fill read as a nested card.
- */
-@Composable
-private fun QueueChip(glyph: String, tone: Color, text: String) {
-    ChatChip(
-        text = text,
-        glyph = glyph,
-        glyphTone = tone,
-    )
-}
-
-/**
- * The delivery row for a finished `/export`.
- *
- * pi's export lands in the user's own cwd (`core/export-html/index.ts:274-281`), so
- * on a desktop the file is simply there. This app's export lands in its private
- * workspace, where no file manager can reach it — so "where is it and how do I get
- * it out" is the only question the row has to answer. It shows the file name (what
- * the user will look for) and the two sinks the app already owns for its own
- * diagnostic report ([SessionExportDelivery]). No location is shown, because the
- * only location the app could print is one the user cannot open.
- */
-@Composable
-internal fun ExportDeliveryRow(
-    exported: ExportedSession,
-    onSave: () -> Unit,
-    onShare: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = PiSpacing.composerPageMargin, vertical = 4.dp),
-        shape = PiShapes.card,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-    ) {
-        Column(Modifier.padding(horizontal = PiSpacing.cardPadding, vertical = 8.dp)) {
-            Text(
-                "会话已导出",
-                style = PiTheme.text.prose.copy(fontWeight = FontWeight.Medium),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                exported.name,
-                style = PiTheme.text.monoSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(6.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                DeliveryAction("保存到 Download", onSave)
-                Spacer(Modifier.width(14.dp))
-                DeliveryAction("分享", onShare)
-                Spacer(Modifier.weight(1f))
-                Text(
-                    "关闭",
-                    modifier = Modifier
-                        .clickable(onClick = onDismiss)
-                        .padding(horizontal = 6.dp, vertical = 3.dp),
-                    style = PiTheme.text.meta,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun DeliveryAction(label: String, onClick: () -> Unit) {
-    Text(
-        label,
-        modifier = Modifier
-            .clickable(onClick = onClick)
-            .padding(vertical = 3.dp),
-        style = PiTheme.text.prose.copy(fontWeight = FontWeight.Medium),
-        color = MaterialTheme.colorScheme.primary,
-    )
-}
-
-@Composable
-private fun Composer(
-    draft: String,
-    onDraftChange: (String) -> Unit,
-    thinkingLevel: String,
-    streaming: Boolean,
-    /** True while a follow-up could actually be queued: streaming, non-blank draft. */
-    canFollowUp: Boolean,
-    /** True while a `steer` could actually be delivered: streaming, and something to send. */
-    canSteer: Boolean,
-    /** 工具行那颗模型 chip 的文字；null 时显示「选择模型」。 */
-    modelLabel: String?,
-    /** 点模型 chip：拉模型列表，再开模型面板。 */
-    onOpenModel: () -> Unit,
-    /** 点思考等级的文字：循环切到下一档。 */
-    onCycleThinking: () -> Unit,
-    /** 长按思考等级：打开选择列表（pi 的 `thinking.levels`），不用循环到想要的那一档。 */
-    onPickThinking: () -> Unit,
-    onOpenPalette: () -> Unit,
-    onOpenBash: () -> Unit,
-    /** pi's `!!`: run the command without putting it in the model's context. */
-    onOpenBashExcluded: () -> Unit,
-    onOpenMention: () -> Unit,
-    /** The paperclip: an image goes on the wire, any other file in as its path. */
-    onPickAttachment: () -> Unit,
-    /** pi's context occupancy as it reports it; null draws the ring's `?`. */
-    contextUsage: PiResponses.ContextUsage?,
-    /** 点环：先补读 stats，再打开**原来那张**「上下文与用量」sheet。 */
-    onOpenContext: () -> Unit,
-    /** pi's `app.clear`: empty editor. True while there is something to clear. */
-    canClear: Boolean,
-    onClear: () -> Unit,
-    /** 引导: pi's steer — the message joins the running turn. */
-    onSteer: () -> Unit,
-    /** 后续: pi's followUp — the message waits for the turn to finish. */
-    onFollowUp: () -> Unit,
-    onSend: () -> Unit,
-    onStop: () -> Unit,
-) {
-    // A state channel, not decoration: pi paints its editor with the current
-    // thinking level's token and switches to `bashMode` when the line starts with
-    // `!` (`interactive-mode.ts` `updateEditorBorderColor`).
-    val borderColor = if (bashModeOf(draft)) {
-        PiTheme.palette.bashMode
-    } else {
-        PiTheme.palette.thinking(thinkingLevel)
-    }
-    // 外观：26dp 圆角、1.5 → 2 的描边；不画 elevation 投影（6dp 投影落在输入框
-    // 下面那行上，浅色下就是输入框与导航条之间的一条灰带）。描边颜色仍完全来自
-    // 上面的 `borderColor`，色相与取色逻辑一个字节没改。
-    val inputShape = RoundedCornerShape(PiSpacing.composerRadius)
-    // 6 行是**按行高算**的，不是写死 120dp：系统字体放大后写死的 120 只能放 4 行半。
-    //
-    // 输入框文字（所有档位）：与发出去后的用户气泡同一套阅读宋体、同字号，行高取字号的 1.5 倍。
-    // 原来写死 20 sp，而非经典档的正文是 16 sp：1.25 的行距，汉字多行输入又挤又闷，
-    // 敲出来是黑体、一发送变宋体也不连贯。经典档仍是 14/20。
-    val composerProse = PiTheme.text.prose
-    val composerLineHeight = (composerProse.fontSize.value * 1.5f).sp
-    val composerTextStyle =
-        composerProse.copy(fontFamily = PiProseFamily, fontWeight = FontWeight.Normal, lineHeight = composerLineHeight)
-    val lineHeightDp = with(LocalDensity.current) { composerLineHeight.toDp() }
-    val fieldMaxHeight = lineHeightDp * COMPOSER_MAX_LINES
-    var focused by remember { mutableStateOf(false) }
-    val borderWidth by animateDpAsState(
-        targetValue = if (focused) PiSpacing.composerBorderFocused else PiSpacing.composerBorderIdle,
-        animationSpec = tween(COMPOSER_BORDER_MS),
-        label = "composerBorderWidth",
-    )
-
-    // 运行中呼吸：只在 alpha 上往返，不改宽度、不改色相。聚焦（正在打字）时目标回到
-    // 1，进出各走一次 [COMPOSER_FADE_MS]；系统关掉动画时 `pulse` 根本不进目标。
-    val animationsEnabled = ValueAnimator.areAnimatorsEnabled()
-    val pulse by rememberInfiniteTransition(label = "composerPulse").animateFloat(
-        initialValue = 1f,
-        targetValue = COMPOSER_PULSE_MIN,
-        animationSpec = infiniteRepeatable(
-            animation = tween(COMPOSER_PULSE_MS, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "composerPulseAlpha",
-    )
-    val factor by animateFloatAsState(
-        targetValue = if (streaming && !focused && animationsEnabled) pulse else 1f,
-        animationSpec = tween(COMPOSER_FADE_MS),
-        label = "composerPulseFactor",
-    )
-    val shownBorder = borderColor.copy(alpha = borderColor.alpha * factor)
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            // 外观的两层在**外**、`animateContentSize` 在**内**：动画改变的是卡片自己的
-            // 高度，background / border 画在动画后的尺寸上，行数增长时不会出现
-            // "底已经跳到位、边框还在半路"的错位。
-            //
-            // 不再用 elevation 投影：6dp 的投影落在输入框下面那行卡片上，浅色主题里
-            // 就是输入框与导航条之间的一条灰带（用户 2026-10-26 要求去掉）。卡片靠
-            // `surfaceContainerLow` 与 1.5dp 描边浮起来，页面底色一直铺到屏底。
-            .background(MaterialTheme.colorScheme.surfaceContainerLow, inputShape)
-            .border(borderWidth, shownBorder, inputShape)
-            // 1–6 行的高度变化在这里补齐；超过 6 行由字段自己内部滚动。
-            .animateContentSize()
-            .padding(
-                start = PiSpacing.inner,
-                end = PiSpacing.inner,
-                top = 9.dp,
-                // 底面从 9 收到 4、键行前间距从 8 加到 14：键行（含发送）再往下
-                // 让一点，和输入框拉开距离，减少误触；行内仍是中心对齐。
-                bottom = PiSpacing.small,
-            ),
-    ) {
-            // 这个字段必须自己拿 `TextFieldValue`，不能用 `value: String` 那个重载。
-            // 库的 String 重载把光标位置存在自己内部
-            // （`androidx/compose/foundation/text/BasicTextField.kt:713-717`：
-            // `val textFieldValue = textFieldValueState.copy(text = value)` —— **只换文本、
-            // 不动 selection**，而 `textFieldValueState` 的初始 selection 是 `TextRange.Zero`），
-            // 而这里 `draft` 会被**代码**改掉：命令面板与菜单（`draft = "/"`）、`!` / `!!`、
-            // `@` 提及（`draft += "@"`）。于是程序化塞进去的 `/` 后面光标仍停在 0 ——
-            // 再打字就落在斜杠**前面**（用户报的正是这个；用输入法敲 `/` 没事，因为那条路走
-            // `CoreTextField` 自己的编辑，selection 是它算出来的）。
-            // 所以：**文本不是这一次用户敲出来的时候，一律把光标放到末尾**，这也是按这些按钮
-            // 的人接下来要打字的位置。
-            val field = remember {
-                mutableStateOf(TextFieldValue(text = draft, selection = TextRange(draft.length)))
-            }
-            if (field.value.text != draft) {
-                field.value = TextFieldValue(text = draft, selection = TextRange(draft.length))
-            }
-            BasicTextField(
-                value = field.value,
-                // 用户输入这条路上，selection/composition 都来自库，原样存回，不能重建
-                // （重建会丢掉输入法的 composing 区间，中文输入时可见地闪）。**但只有文本真的
-                // 变了才写回 `draft`**，见下。
-                onValueChange = { updated ->
-                    // 这道**文本**一级的闸必须自己补，`value: TextFieldValue` 重载里没有。
-                    // 库的 `value: String` 重载内部有一道 `lastTextValue != new.text`
-                    // （`androidx/compose/foundation/text/BasicTextField.kt:727-742`），所以只有
-                    // 文本真的变了的更新才到达 `onValueChange`；`TextFieldValue` 重载的闸是整值
-                    // 比较 `if (value != it)`（同文件 `:868-874`），而 `TextFieldValue.equals`
-                    // 把 composition/selection 也算进去（`ui-text` 的 `TextFieldValue.kt:123-132`）。
-                    // 库在**失去焦点**时会主动发一次
-                    // `onValueChange(editProcessor.toTextFieldValue().copy(composition = null))`
-                    // ——**文本没变**（`TextFieldDelegate.kt:395-404`，`onBlur`）。发送路径正好是
-                    // 这个形状：先 `draft = ""`，紧接着 `dismissKeys()` 的 `focus.clearFocus()`
-                    // （本文件 `:499-502` 与 `:2606`/`:2617`），而 `onBlur` 读的是 EditProcessor，
-                    // 它只在 `CoreTextField` 组合时才被重置（`CoreTextField.kt:280`），于是那次
-                    // 回调交回来的是**清空之前**的文本，`onDraftChange` 把它写回 `draft` —— 发送
-                    // 的清空就这么被抹掉了（用户报的「发出去了、字还在输入框里、还能再发一遍」）。
-                    // 只有在 composing 区间存在时 `value != it` 才为真、闸放行，所以它只是「有时候」。
-                    // 注意不能拿 `draft` 当基准比较：这个 bug 里 `draft` 已经是 `""`，那反而会放行。
-                    val textChanged = updated.text != field.value.text
-                    field.value = updated
-                    if (textChanged) onDraftChange(updated.text)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = lineHeightDp, max = fieldMaxHeight)
-                    // 聚焦时描边加粗、呼吸暂停；两个都只读这一个布尔。
-                    .onFocusChanged { focused = it.isFocused },
-                // `06 §2` 输入区「输入 14/20」: the composer's own text is the 14 sp
-                // chat-text step with a 20 sp lead, not M3's larger field default.
-                textStyle = composerTextStyle.copy(color = MaterialTheme.colorScheme.onSurface),
-                // 1–6 行；第 7 行起由字段自己内部滚动，外面不再长高。
-                maxLines = COMPOSER_MAX_LINES,
-                cursorBrush = SolidColor(PiTheme.palette.accent),
-                decorationBox = { inner ->
-                    Box {
-                        if (draft.isEmpty()) {
-                            Text(
-                                text = "输入消息，/ 选命令，! 直接跑命令，@ 提及文件",
-                                style = composerTextStyle,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        inner()
-                    }
-                },
-            )
-            Spacer(Modifier.height(13.dp))
-            BoxWithConstraints(Modifier.fillMaxWidth()) {
-                val configuration = LocalConfiguration.current
-                // 思考等级的文字：流式时键行还要多出「引导 / 后续」两枚，所以只有
-                // 当模型 chip 仍能保住最小宽度时才占位；否则先收起（顶栏 ⋮ 仍可改，
-                // 输入框描边也仍然跟着等级）。字体放大到 1.3 以上时同理。
-                val measurableThinking = configuration.fontScale <= 1.3f
-                val thinkingText = thinkingLabelOf(thinkingLevel)
-                val thinkingStyle = PiType.chipLabel
-                val textMeasurer = rememberTextMeasurer()
-                val density = LocalDensity.current
-                val thinkingWidth = if (measurableThinking) {
-                    with(density) {
-                        textMeasurer.measure(thinkingText, style = thinkingStyle).size.width.toDp()
-                    } + PiSpacing.small * 2f
-                } else {
-                    0.dp
-                }
-                // 右侧固定项：三枚工具 + 流式时两枚 + 环 + 两段间距 + 发送。
-                val base = PiSpacing.composerToolSize * 3f +
-                    (if (streaming) PiSpacing.composerToolSize * 2f + PiSpacing.tiny else 0.dp) +
-                    PiSpacing.composerRingTouch +
-                    PiSpacing.composerChipGap +
-                    PiSpacing.composerChipSendGap +
-                    PiSpacing.composerSendSize
-                // 只有给 chip 留得下最小宽度时，思考等级文字才真的画出来。
-                val showThinking = measurableThinking &&
-                    (maxWidth - base - thinkingWidth - PiSpacing.small) >=
-                    PiSpacing.composerModelChipMinWidth
-                val fixed = base +
-                    (if (showThinking) thinkingWidth + PiSpacing.composerChipGap else 0.dp)
-                // chip 吃掉剩下的宽度（至少 72、至多 132），再给弹性空白留 4dp。
-                val chipMax = (maxWidth - fixed - PiSpacing.small)
-                    .coerceIn(
-                        PiSpacing.composerModelChipMinWidth,
-                        PiSpacing.composerModelChipMaxWidth,
-                    )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // 左侧三枚：30dp 的圆形热区、20dp 字形，平时没有底，按下才起涟漪。
-                    ComposerIconButton(onClickLabel = "命令面板", onClick = onOpenPalette) {
-                        Text(
-                            text = "/",
-                            style = PiTheme.text.mono.copy(
-                                fontSize = with(LocalDensity.current) { PiSpacing.composerToolIcon.toSp() },
-                            ),
-                            color = PiTheme.palette.text,
-                        )
-                    }
-                    ComposerIconButton(onClickLabel = "添加附件", onClick = onPickAttachment) {
-                        Icon(
-                            imageVector = Icons.Filled.AttachFile,
-                            contentDescription = null,
-                            modifier = Modifier.size(PiSpacing.composerToolIcon),
-                            tint = PiTheme.palette.text,
-                        )
-                    }
-                    // `@` / `!` / `!!` / 清空在这里；引导 / 后续不在菜单里，见下。
-                    ComposerMenu(
-                        onOpenMention = onOpenMention,
-                        onOpenBash = onOpenBash,
-                        onOpenBashExcluded = onOpenBashExcluded,
-                        canClear = canClear,
-                        onClear = onClear,
-                    )
-                    // 引导 / 后续：只在流式时出现，不常驻，所以留在键行里而不是 ⋮。
-                    if (streaming) {
-                        ComposerDeliveryChip(label = "引导", enabled = canSteer, onClick = onSteer)
-                        Spacer(Modifier.width(PiSpacing.tiny))
-                        ComposerDeliveryChip(label = "后续", enabled = canFollowUp, onClick = onFollowUp)
-                    }
-                    Spacer(Modifier.weight(1f))
-                    // 一直显示：拿不到 percent 时环里是 pi 自己的 `?`，不是把整枚藏掉。
-                    // 总量在 pi 没给 contextWindow 时回退到当前模型自己的窗口（pi 的
-                    // footer 也是这么取的：`contextUsage?.contextWindow ?? state.model?.contextWindow`）。
-                    ContextRingButton(
-                        usage = contextUsage,
-                        onOpenContext = onOpenContext,
-                    )
-                    Spacer(Modifier.width(PiSpacing.composerChipGap))
-                    // 模型 chip：从顶栏挪下来，排在环和发送之间。
-                    ComposerModelChip(
-                        label = modelLabel,
-                        maxWidth = chipMax,
-                        onClick = onOpenModel,
-                    )
-                    // 思考等级：**只删了 ◐ 图标**，文字按钮本身还在；宽度够就显示。
-                    if (showThinking) {
-                        Spacer(Modifier.width(PiSpacing.composerChipGap))
-                        ThinkingLevelButton(level = thinkingLevel, onClick = onCycleThinking, onLongClick = onPickThinking)
-                    }
-                    Spacer(Modifier.width(PiSpacing.composerChipSendGap))
-                    Box(
-                        modifier = Modifier
-                            .size(PiSpacing.composerSendSize)
-                            .clip(CircleShape)
-                            .background(PiTheme.palette.accent)
-                            .clickable(
-                                onClickLabel = if (streaming) "停止" else "发送",
-                                onClick = { if (streaming) onStop() else onSend() },
-                            ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = if (streaming) Icons.Filled.Stop else Icons.Filled.Send,
-                            contentDescription = if (streaming) "停止" else "发送",
-                            modifier = Modifier.size(PiSpacing.composerSendIcon),
-                            tint = PiTheme.palette.pageBg,
-                        )
-                    }
-                }
-            }
-        }
-}
-
-/** pi: `isBashMode = text.trimStart().startsWith("!")`. */
-private fun bashModeOf(draft: String): Boolean = draft.trimStart().startsWith("!")
 
 /**
  * How long the composer waits before asking for `@` mention candidates.
@@ -3685,29 +2475,6 @@ private fun bashModeOf(draft: String): Boolean = draft.trimStart().startsWith("!
  */
 private const val MENTION_DEBOUNCE_MS: Long = 150L
 
-/**
- * How often the transcript's search may re-scan while a turn is streaming.
- *
- * The same number, and the same **shape** of argument, as the transcript's tool-output
- * throttle (`rpc/.../Transcript.kt` `TOOL_UPDATE_THROTTLE_MS`): a costly per-token
- * operation is bound to a repaint-sized window instead of being paid per event. It is
- * deliberately **not** that constant though — this number is sized by the scan below
- * (110 ms for 800 rows), not by the tool cadence, so sharing the value must not make one
- * move when the other is retuned. `PiSessionViewModel`'s bash panel is the one that had a
- * second spelling of the tool throttle and now imports it; this is a separate knob.
- *
- * pi publishes once per streamed event, and a search over the whole session is expensive
- * enough (110 ms for 800 rows of realistic size, measured on a desktop JVM) that paying it
- * per token is a frozen screen. A search is a reading of the transcript, not a live feed —
- * a match list that is 200 ms behind the newest text is imperceptible, and the turn's last
- * publication is always scanned because the scan is repeated once the transcript stops
- * streaming.
- *
- * The residual cost is bounded by what the scan has to read, which is the session's own
- * text: the follow-up (if this is ever still felt) is to cache each row's search text in
- * the reducer, not to lengthen this window.
- */
-private const val SEARCH_RESCAN_MS: Long = 200L
 
 /**
  * F34 (`docs/rendering-review.md`) / spec §4.5: how many transcript rows are rendered
@@ -3720,6 +2487,7 @@ private const val SEARCH_RESCAN_MS: Long = 200L
  * reducer's own replay independent of how much is on screen.
  */
 private const val TRANSCRIPT_WINDOW_STEP = 50
+
 
 /**
  * How many row keys are remembered as "the window has just brought this row in, and it has
@@ -3734,9 +2502,12 @@ private const val TRANSCRIPT_WINDOW_STEP = 50
  */
 private const val FRESH_ROW_KEYS_MAX = 200
 
+
 /** The floating scroll arrow's visual diameter; the tap target is [SCROLL_ARROW_TAP]. */
 private val SCROLL_ARROW_SIZE = PiSpacing.scrollArrowVisual
+
 private val SCROLL_ARROW_TAP = PiSpacing.scrollArrowTap
+
 
 /**
  * Idle opacity of a scroll arrow. The buttons sit over the transcript, so at rest
@@ -3745,6 +2516,7 @@ private val SCROLL_ARROW_TAP = PiSpacing.scrollArrowTap
  * without losing the press).
  */
 private const val SCROLL_ARROW_IDLE_ALPHA = 0.62f
+
 
 /**
  * One of the transcript's two floating scroll arrows (spec §4.5's affordance, in the
@@ -3809,6 +2581,7 @@ private fun ScrollArrowButton(
     }
 }
 
+
 /**
  * `rememberSaveable`'s saver for the follow machine.
  *
@@ -3824,667 +2597,4 @@ private val TailFollowSaver: Saver<TailFollow, Any> = listSaver(
     restore = { saved -> TailFollow.fromSavedState(saved) },
 )
 
-/**
- * The composer's ⋮ button: `@` / `!` / `!!` / 清空, plus 引导 / 后续 while a turn runs.
- *
- * 30 dp 圆形热区、20 dp 手绘三点，和 `/`、回形针同一套；平时没有底色，只有按下时
- * 的涟漪。菜单仍然**向上**开（[PiMenuPlacement.Above]）：按钮在屏幕底部，向下会被
- * 键盘挡住。
- *
- * 引导 / 后续 **不在这里**：它们是流式时最急的两个动作，保留在键行里（见
- * `ComposerDeliveryChip`）。这个菜单只放触发符和清空。
- */
-@Composable
-private fun ComposerMenu(
-    onOpenMention: () -> Unit,
-    onOpenBash: () -> Unit,
-    onOpenBashExcluded: () -> Unit,
-    canClear: Boolean,
-    onClear: () -> Unit,
-) {
-    var open by remember { mutableStateOf(false) }
-    val palette = PiTheme.palette
-    Box(
-        modifier = Modifier
-            .size(PiSpacing.composerToolSize)
-            .clip(CircleShape)
-            .clickable(onClickLabel = "更多输入方式", onClick = { open = true }),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = THREE_DOT_GLYPH,
-            contentDescription = null,
-            modifier = Modifier.size(PiSpacing.composerToolIcon),
-            tint = MaterialTheme.colorScheme.onSurface,
-        )
-        // The same rule as the top bar's menu: the item list is built at this call site,
-        // so a closed menu must not build it. See that site's note.
-        if (open) PiMenu(
-            expanded = true,
-            onDismiss = { open = false },
-            placement = PiMenuPlacement.Above,
-            items = buildList {
-                add(
-                    PiMenuItem(
-                        symbol = "@",
-                        label = "提及文件",
-                        note = "插入文件路径",
-                        symbolColor = palette.text,
-                        onSelect = onOpenMention,
-                    ),
-                )
-                // `!` and `!!` sit next to each other and differ **only** in the
-                // right-hand note, because that is the only difference in pi: `!!`
-                // runs the command without putting it in the model's context
-                // (`modes/interactive/interactive-mode.ts:933`, `:3107`; the
-                // execution side honours it through `ui/chat/SlashPalette.kt`'s
-                // `excludeFromContext`). The symbol of both is the shell mode colour
-                // pi paints a `!` line with.
-                add(
-                    PiMenuItem(
-                        symbol = "!",
-                        label = "跑命令",
-                        note = "进上下文",
-                        symbolColor = palette.bashMode,
-                        onSelect = onOpenBash,
-                    ),
-                )
-                add(
-                    PiMenuItem(
-                        symbol = "!!",
-                        label = "跑命令",
-                        note = "不进上下文",
-                        symbolColor = palette.bashMode,
-                        onSelect = onOpenBashExcluded,
-                    ),
-                )
-                if (canClear) {
-                    add(
-                        PiMenuItem(
-                            label = "清空",
-                            // pi's `app.clear` (`interactive-mode.ts:919`, ctrl+c).
-                            a11yLabel = "清空草稿",
-                            dividerBefore = true,
-                            onSelect = onClear,
-                        ),
-                    )
-                }
-            },
-        )
-    }
-}
 
-/**
- * The three dots of [ComposerMenu], drawn here rather than taken from
- * `Icons.Filled.MoreVert`.
- *
- * The viewport is 24 (M3's glyph is drawn for 18 and scaled), the dots are solid
- * circles of `r = 2` centred at `y = 6 / 12 / 18`, and the path is the six half-arcs
- * that are those three circles — an `ImageVector` path builder has no `circle()`
- * helper. The fill is
- * the same unreachable placeholder every vector here uses: `Icon`'s `tint` is what
- * colours it, because this vector carries no `tintColor` of its own.
- */
-private val THREE_DOT_GLYPH: ImageVector = ImageVector.Builder(
-    name = "PiComposerMenuDots",
-    defaultWidth = 24.dp,
-    defaultHeight = 24.dp,
-    viewportWidth = 24f,
-    viewportHeight = 24f,
-).addPath(
-    pathData = PathParser().parsePathString(
-        "M10 6a2 2 0 104 0a2 2 0 10-4 0" +
-            "M10 12a2 2 0 104 0a2 2 0 10-4 0" +
-            "M10 18a2 2 0 104 0a2 2 0 10-4 0",
-    ).toNodes(),
-    fill = SolidColor(Color.Black),
-).build()
-
-/**
- * 悬浮输入框工具行里的一枚圆形图标按钮。
- *
- * 30 dp 热区、20 dp 字形，平时**没有底色**（旧版的灰方块被去掉了），只有
- * `clickable` 自带的涟漪在按下时出现。`onClickLabel` 始终独立传入：图标按钮没有
- * 可见文字，没有它读屏就什么都没有。
- */
-@Composable
-private fun ComposerIconButton(
-    onClickLabel: String,
-    onClick: () -> Unit,
-    content: @Composable () -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .size(PiSpacing.composerToolSize)
-            .clip(CircleShape)
-            .clickable(onClickLabel = onClickLabel, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        content()
-    }
-}
-
-/**
- * 流式时的「引导 / 后续」：30 dp 的圆形文字按钮，只在 `streaming` 时出现。
- *
- * **和左边三枚图标按钮同一套形状/背景**：30 dp 圆、没有底色、按下才起涟漪；
- * 唯一的区别是内容 —— 这三个是图标，这两个是两字标签。禁用时文字转 muted，
- * 仍是同一个圆、同一个位置，不跳。
- *
- * 宽度：两枚圆合计 62 dp（原来 26 dp 的 pill 是 76 dp）。360 dp 屏流式时
- * 思考文字收起，模型 chip 仍有 78；393 dp 上思考文字与 chip(75) 能同时排下，
- * 更宽的屏上 chip 会自动长到 140 为止。
- */
-@Composable
-private fun ComposerDeliveryChip(
-    label: String,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .size(PiSpacing.composerToolSize)
-            .clip(CircleShape)
-            .clickable(enabled = enabled, onClickLabel = label, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            style = PiTheme.text.monoSmall,
-            color = if (enabled) MaterialTheme.colorScheme.onSurface else PiTheme.palette.muted,
-            maxLines = 1,
-        )
-    }
-}
-
-/**
- * 上下文用量环。**点按仍然是原来那个「上下文与用量」sheet**，不是另造的气泡。
- *
- * 一直显示：`usage` 为空或 `percent == null` 时，环里是 `PiContextRing` 自己的 `?`
- * （pi 在压缩后到下一次回复前也是同一个窗口）。环 20 dp、2 dp 笔，进度弧颜色仍由
- * `PiContextRing` 的 `contextProgressColor` 决定。
- */
-@Composable
-private fun ContextRingButton(
-    usage: PiResponses.ContextUsage?,
-    onOpenContext: () -> Unit,
-) {
-    Box(Modifier.size(PiSpacing.composerRingTouch), contentAlignment = Alignment.Center) {
-        PiContextRing(
-            percent = usage?.percent,
-            diameter = PiSpacing.composerRingDiameter,
-            stroke = PiSpacing.composerRingStroke,
-            placeholderStyle = PiTheme.text.monoSmall,
-            modifier = Modifier
-                .size(PiSpacing.composerRingTouch)
-                .clip(CircleShape)
-                .clickable(
-                    onClickLabel = "查看上下文与用量",
-                    onClick = onOpenContext,
-                ),
-        )
-    }
-}
-
-/**
- * 思考等级：**只剩文字**。2026-10-26 用户把 `◐` 图标删掉（「没什么用」），
- * 文字按钮本身保留：13sp Medium 无衬线、28 高、点一下循环到下一档。
- *
- * 流式时键行多出「引导 / 后续」两枚，这里由 [BoxWithConstraints] 统一决定是否
- * 显示（见 `Composer` 里的 `showThinking`），不是这枚按钮自己判断宽度。
- */
-@Composable
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-private fun ThinkingLevelButton(level: String, onClick: () -> Unit, onLongClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .height(PiSpacing.composerThinkingHeight)
-            .clip(RoundedCornerShape(6.dp))
-            .combinedClickable(
-                onClickLabel = "切换思考等级：${thinkingLabelOf(level)}",
-                onClick = onClick,
-                onLongClickLabel = "选择思考等级",
-                onLongClick = onLongClick,
-            )
-            .padding(horizontal = PiSpacing.small),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = thinkingLabelOf(level),
-            style = PiType.chipLabel,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-        )
-    }
-}
-
-/**
- * One pending attachment: a real thumbnail, not a file name.
- *
- * The decode is the same shared one the transcript uses ([decodePiImage]) and it
- * runs off the main thread, because a camera JPEG is not composition work. A
- * payload the platform codec refuses still gets a tappable chip with its MIME
- * type, so the user can see *what* will be sent and remove it.
- *
- * The decode is bounded by [ATTACHMENT_THUMB_SIZE] instead of left at its natural size: a
- * staged photo is up to pi's 2000 px ceiling and this paints a 48 dp square. The note
- * inside has the arithmetic and the shared decode gate.
- */
-private val ATTACHMENT_THUMB_SIZE = 48.dp
-
-@Composable
-internal fun AttachmentThumb(
-    image: PiImage,
-    index: Int,
-    onRemove: () -> Unit,
-) {
-    // The decode is bounded by the box it is drawn in, the same way the transcript's
-    // cells bound theirs (`decodePiImage`'s `targetWidth`/`targetHeight`). Without it the
-    // default is "the natural size": a staged photo is up to pi's 2000 px ceiling, i.e.
-    // ~16 MB of ARGB per attachment held to paint a 48 dp square, and a message may carry
-    // seven of them. `decodePiImage` keeps the result within 2× of this box on each axis,
-    // so the thumbnail is still sampled above its drawn size at any density.
-    val thumbPx = with(LocalDensity.current) { ATTACHMENT_THUMB_SIZE.roundToPx() }
-    val bitmap by produceState<android.graphics.Bitmap?>(initialValue = null, image.base64, thumbPx) {
-        value = withContext(Dispatchers.IO) {
-            // The same gate the transcript's decodes go through
-            // (`MAX_CONCURRENT_IMAGE_DECODES`): staging five photos must not start five
-            // simultaneous full-res codec runs on the frame's behalf.
-            piImageDecodeGate.withPermit {
-                // …and the same process-wide bitmap cache the transcript's cells use
-                // (`PiImageCache`, keyed by payload + box), so re-staging the same picture — or
-                // leaving the composer and coming back — reuses the decode instead of running
-                // the codec again. The permit is held for the lookup too; a hit is a reference
-                // compare or one `memcmp` over the payload and costs no codec work, and the
-                // 32 MiB bound (payloads charged) lives in that object.
-                PiImageCache.readThrough(image.base64, thumbPx, thumbPx) {
-                    decodePiImage(image.base64, thumbPx, thumbPx)
-                }
-            }
-        }
-    }
-    Surface(
-        modifier = Modifier
-            .padding(end = 6.dp)
-            .size(ATTACHMENT_THUMB_SIZE)
-            .clickable(onClickLabel = "移除第 ${index + 1} 张图片", onClick = onRemove),
-        shape = PiShapes.cardInner,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            val decoded = bitmap
-            if (decoded != null) {
-                Image(
-                    bitmap = decoded.asImageBitmap(),
-                    contentDescription = "待发送的第 ${index + 1} 张图片，点击移除",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else {
-                Text(
-                    image.mimeType.substringAfter('/').ifEmpty { "图片" },
-                    style = PiTheme.text.meta,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
-
-/**
- * Read at most `limit + 1` bytes, so "bigger than the limit" is answered without
- * ever materialising the whole input.
- *
- * `InputStream.readNBytes`/`readBytes()` allocate for whatever the provider offers;
- * a gallery or cloud provider can offer hundreds of megabytes. One byte past the
- * limit is all the caller's comparison needs, and it bounds both the allocation and
- * the time spent on a file that is about to be rejected.
- *
- * The limit callers pass is [AttachmentBudget.MAX_PICKED_IMAGE_BYTES]: the app's own
- * memory guard, not pi's rule and not the message's budget — pi's resize has no input
- * bound at all, and the image is compressed after this read, so a file over the guard
- * is refused for what it costs to hold, not for how big it would have been on the wire.
- */
-private fun readBounded(input: java.io.InputStream, limit: Int): ByteArray {
-    val cap = limit + 1
-    val out = java.io.ByteArrayOutputStream(minOf(cap, 64 * 1024))
-    val buffer = ByteArray(64 * 1024)
-    while (out.size() < cap) {
-        val read = input.read(buffer, 0, minOf(buffer.size, cap - out.size()))
-        if (read < 0) break
-        out.write(buffer, 0, read)
-    }
-    return out.toByteArray()
-}
-
-/**
- * pi's inline-image normalization on Android's codecs — the thin half that needs a
- * `Bitmap`.
- *
- * Every number and every ordering decision comes from [AttachmentBudget] (pi's
- * `maxWidth`/`maxHeight`, the 4.5 MB base64 ceiling, the quality ladder, the
- * three-quarter shrink, and which encodings to try when); this function only performs
- * them. That split is deliberate: it is the difference between "the harness checks the
- * sizes and orderings that decide whether a picture fits" and "the harness checks
- * nothing, because `BitmapFactory` needs a phone".
- *
- * ## pi's flow, and where this differs
- *
- *  0. **EXIF 方向先摆正**（`image-resize-core.ts:74-76` → `exif-orientation.ts`）：pi 在算
- *     `originalWidth`/`originalHeight` **之前**就把图转正，所以后面每一步 —— 快速路径的判断、
- *     目标尺寸、3/4 收缩、质量阶梯 —— 看到的都是**摆正后**的长宽。App 这边这一步是
- *     `PiExifOrientation.read` 读出方向、`Matrix` 施加同一个置换（`BitmapFactory` 自己不看
- *     EXIF，`Bitmap.compress` 也不写 EXIF）。少了这一步，竖拍的照片（像素 4032×3024 +
- *     EXIF orientation 6）会被算成 2000×1500 的横图 —— 模型收到一张侧倒的图。
- *  1. **Fast path** (`image-resize-core.ts:82-93`): a picture already within both limits
- *     goes on the wire **byte for byte**, with its own MIME type. This is the only path
- *     that does not re-encode, and it is what keeps an ordinary photo from being
- *     re-compressed for nothing. One condition is added to pi's: the MIME must be one pi
- *     accepts inline ([AttachmentBudget.piInlineSupported]). pi converts everything else
- *     to PNG first (`image-process.ts:49-65`); without this, a `image/heic` under the
- *     limits would be forwarded as HEIC and rejected by the provider — a case pi cannot
- *     have.
- *  2. **Resize loop** (`:95-160`): clamp the long edge to 2000, then try the encodings at
- *     that size, then shrink by three quarters and try again, down to 1×1. pi uses
- *     Lanczos3 through Photon; Android's `Bitmap.createScaledBitmap(..., filter = true)`
- *     is bilinear, which is a resampling difference, not a size or an ordering one — it
- *     is listed as device-only in the change report.
- *
- *     **为什么这里不给 `BitmapFactory` 设 `inSampleSize`**：pi 的每一轮收缩都是从**全分辨率**
- *     的 `image` 重新 `photon.resize` 的（`image-resize-core.ts:109`，`image` 是 `:74` 解码出来
- *     的那一张）。解码期先按整倍数丢掉一半像素，等于让第 2 轮之后的每一次收缩都从比 pi 更少的
- *     像素重采样 —— 尺寸对了，细节比 pi 少。省内存的收益不值得在这里制造一个内容层面的差异
- *     （峰值内存是设备问题，列在变更报告里）。
- *  3. **候选顺序与源无关**（`AttachmentBudget.encodings`）：pi 对**每一个**进循环的源都先推
- *     PNG 候选，装不下再走 JPEG 阶梯（`image-resize-core.ts:112-114`、`:122`）—— 包括一张
- *     不透明的相机 JPEG。这里照抄，不按 MIME 也不按 `Bitmap.hasAlpha()` 分流：旧的「只在
- *     PNG 源或带 alpha 时才试 PNG」把截图上的字压糊了（同一张 2400×600 的图形，PNG 1 184 593 B
- *     对 JPEG80 134 870 B）。两笔随之而来的价钱（每次重编码多一次全尺寸 PNG 编码；装得下时
- *     内联体积大几倍，于是同一条消息装得下的图变少）写在 `AttachmentBudget` 的类 KDoc 里。
- *
- * Returns null when the bytes do not decode, when the orientation copy cannot be allocated,
- * or when even 1×1 cannot be encoded under [limits]. Which of the three happened is not
- * knowable here, so the caller says the general thing.
- *
- * [limits] is `AttachmentBudget.limitsFor(state.meta.model?.inputLimits)`: the model's own
- * profile when pi published one, pi's defaults otherwise, with the record's budget as a
- * ceiling. The **fast path** below uses the same limits, so a model with a smaller profile
- * no longer forwards an original the model cannot take.
- *
- * ## `autoResize = false`：pi 的 `images.autoResize`
- *
- * pi 的开关（`settings-manager.ts:68` 定义、`:1404` 的 `getImageAutoResize()`，默认 `true`；
- * 唯一的分支在 `image-process.ts:86`）关掉的是**缩放**，不是归一化 —— `:78` 的
- * `normalizeImage` 照跑：`image/png|jpeg|gif|webp` 原样通过，其余（heic/bmp/tiff）**转成
- * PNG**（`image-convert.ts:23-30`，那次转换里也摆正 EXIF），然后 base64 原样送出。所以这条路
- * 交给 [withAutoResizeOff] 做同样两件事，尺寸、候选序、质量阶梯一个都不参与。
- *
- * **消息预算没有跟着关掉，这是 App 的边界、不是 pi 的。** 预压缩在这边还担着另一件事：暂存的
- * base64 会进 composer 状态，而一条消息的 base64 合计受
- * `JsonlFramer.DEFAULT_MAX_RECORD_CHARS − 64 KiB`（[AttachmentBudget.MESSAGE_BASE64_CHARS]）这条
- * **传输**上限约束 —— 超了的那条记录连 App 自己都读不回来（类 KDoc 有这段历史）。所以关掉自动
- * 缩放只是不再「为了模型的档位」压缩；判定仍在调用方（`AttachmentBudget.decide`），装不下时照样
- * 降级成「放进工作区 + 给路径」，而不是把预压缩和预算一起删掉。
- *
- * Runs on `Dispatchers.IO` — one full-size decode plus one encode is tens of
- * milliseconds and a few megabytes, which must not happen on the frame thread. A model
- * profile *larger* than pi's default makes that first attempt proportionally more expensive
- * (a 4000px decode, not 2000px): that is the cost of no longer throwing away detail the
- * model accepts, and `maxBase64Chars` is still what decides when the loop stops.
- */
-private fun compressAttachment(
-    bytes: ByteArray,
-    mime: String,
-    limits: AttachmentBudget.Limits,
-    autoResize: Boolean,
-): PiImage? {
-    // Header only: `inJustDecodeBounds` reads the size without allocating pixels, which
-    // is also how the fast path is decided without decoding anything.
-    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-    val storedWidth = bounds.outWidth
-    val storedHeight = bounds.outHeight
-    // 这里同时是「这堆字节到底是不是一张图」的判据：`images.autoResize: false` 那条路也走它，
-    // 所以关掉预压缩不会把一份解不开的字节当成图发出去。
-    if (storedWidth <= 0 || storedHeight <= 0) return null
-
-    // EXIF 方向**先**读，而且要用它把「存储长宽」换成「摆正后长宽」：pi 的
-    // `originalWidth`/`originalHeight` 取自摆正之后的图（`image-resize-core.ts:74-79`），
-    // 而 `BitmapFactory` 给的是**存储**尺寸。摆正只换方向、不换像素数，所以解码取样
-    // （`inSampleSize`）仍然按存储像素算 —— 本函数不设 `inSampleSize`（见 KDoc），这条只是
-    // 提醒后来者别把两者混在一起：解码出来还是 storedWidth×storedHeight 个像素。
-    val orientation = PiExifOrientation.read(bytes)
-    val transform = PiExifOrientation.transformFor(orientation)
-    val (width, height) = PiExifOrientation.orientedSize(storedWidth, storedHeight, transform)
-
-    // 用户关掉了 pi 的 `images.autoResize`：不做预压缩（pi 的同一分支也不做）。
-    if (!autoResize) return withAutoResizeOff(bytes, mime, transform)
-
-    if (width <= limits.maxWidth &&
-        height <= limits.maxHeight &&
-        AttachmentBudget.piInlineSupported(mime) &&
-        AttachmentBudget.base64Chars(bytes.size) < limits.maxBase64Chars
-    ) {
-        return PiImage(Base64.encodeToString(bytes, Base64.NO_WRAP), mime)
-    }
-
-    val source = BitmapFactory.decodeByteArray(
-        bytes,
-        0,
-        bytes.size,
-        BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.ARGB_8888 },
-    ) ?: return null
-    // 摆正发生在**进入 3/4 + 质量阶梯循环之前**，与 pi 同序（`:74-76` 在 `:126-154` 之前）。
-    val oriented = applyOrientation(source, transform)
-    if (oriented == null) {
-        source.recycle()
-        return null
-    }
-    try {
-        // 候选顺序不看源：pi 对每一个进循环的源都先推 PNG，装不下再走 JPEG 阶梯
-        // （`AttachmentBudget.encodings`，两笔价钱写在那里的类 KDoc 里）。所以这里不再传 MIME，
-        // 也不再问 `source.hasAlpha()` —— 解码配置仍是 ARGB_8888，那是 PNG 编码要保留 alpha。
-        // pi 1.5.0（`image-resize-core.ts:137-141`）：同一尺寸下 PNG 和第一档 JPEG **都编码出来**，
-        // 谁小先试谁（JPEG 严格更小才排前面），两个都装不下才往下走更低的 JPEG 质量。所以 PNG 那一次
-        // 编码不能直接返回，要等第一档 JPEG 出来再裁决 —— 每个尺寸的第一档 JPEG 就是裁决点。
-        var pngAtSize: PiImage? = null
-        var verdictPending = false
-        for (attempt in AttachmentBudget.attemptPlan(width, height, limits)) {
-            val scaled = scaleForAttachment(oriented, attempt.width, attempt.height) ?: continue
-            try {
-                val encoded = encodeForAttachment(scaled, attempt.encoding)
-                if (attempt.encoding is AttachmentBudget.Encoding.Png) {
-                    pngAtSize = encoded
-                    verdictPending = true
-                    continue
-                }
-                if (verdictPending) {
-                    verdictPending = false
-                    val png = pngAtSize
-                    pngAtSize = null
-                    val ordered = if (AttachmentBudget.jpegBeforePng(png?.base64?.length, encoded?.base64?.length)) {
-                        listOf(encoded, png)
-                    } else {
-                        listOf(png, encoded)
-                    }
-                    // pi's own test is strict (`encodedSize < maxBytes`).
-                    for (candidate in ordered) {
-                        if (candidate != null && candidate.base64.length < limits.maxBase64Chars) return candidate
-                    }
-                    continue
-                }
-                if (encoded == null) continue
-                if (encoded.base64.length < limits.maxBase64Chars) return encoded
-            } finally {
-                // `scaleForAttachment` 在目标就是自己的尺寸时原样返回，那份由外层 finally 负责。
-                if (scaled !== oriented) scaled.recycle()
-            }
-        }
-        return null
-    } finally {
-        // `applyOrientation` 在方向为 1 时返回的就是 `source`，那一份只回收一次。
-        if (oriented !== source) oriented.recycle()
-        source.recycle()
-    }
-}
-
-/**
- * `images.autoResize: false` 那一条路：不做任何缩放，只做 pi 的 `normalizeImage` 那一步。
- *
- *  - pi 能直接内联的 MIME（[AttachmentBudget.piInlineSupported]）：`bytes` **逐字节**转发，
- *    连 EXIF 都留在里面 —— pi 也是把 `normalized.bytes` 原样 base64 送出
- *    （`image-process.ts:113-118`），所以这里与「快速路径」不是同一件事：那条还要求尺寸与
- *    字节数都在档位之内，这条一个都不看。
- *  - 其余 MIME：解码 → 摆正 → 按**原始尺寸**编码 PNG，因为 pi 会先把它转成 PNG
- *    （`image-process.ts:55-64` → `image-convert.ts:23-30`）。这里没有 `inSampleSize`：
- *    采样会让输出与 pi 那张全分辨率 PNG 不同，而这条路的存在意义就是「不替用户改尺寸」。
- *
- * 失败（解码不了、位图分配失败、编码失败）返回 null，调用方按「内联不成」降级 —— 与压缩那条路
- * 同一个出口，但句子不同（那边说「压不出足够小」，这边说不成的是转换）。
- *
- * [transform] 由调用方传入而不是在这里重读一遍 EXIF：方向只解析一次，两条分支用的是同一个值。
- */
-private fun withAutoResizeOff(
-    bytes: ByteArray,
-    mime: String,
-    transform: PiExifOrientation.Transform,
-): PiImage? {
-    if (AttachmentBudget.piInlineSupported(mime)) {
-        return PiImage(Base64.encodeToString(bytes, Base64.NO_WRAP), mime)
-    }
-
-    val source = runCatching {
-        BitmapFactory.decodeByteArray(
-            bytes,
-            0,
-            bytes.size,
-            BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.ARGB_8888 },
-        )
-    }.getOrNull() ?: return null
-    try {
-        val oriented = applyOrientation(source, transform) ?: return null
-        try {
-            return encodeForAttachment(oriented, AttachmentBudget.Encoding.Png)
-        } finally {
-            if (oriented !== source) oriented.recycle()
-        }
-    } finally {
-        source.recycle()
-    }
-}
-
-/**
- * 把解码后的位图摆正到显示方向，用的是 [PiExifOrientation.matrixFor] 那六个数字。
- *
- * `filter = false` 不是性能选择：那张映射是**整数到整数的置换**，重采样（`filter = true`）
- * 只会把每个像素和它邻居插在一起，把一张无损的旋转弄成一张糊的旋转。方向为 1（含「读不出
- * 方向」）时返回 `source` 本身，不复制 —— 绝大多数照片走这条，一次多余的位图分配都不该有。
- *
- * 返回 null 只可能是位图分配失败（OOM）；调用方按「压不出来」处理。
- */
-private fun applyOrientation(source: Bitmap, transform: PiExifOrientation.Transform): Bitmap? {
-    if (transform == PiExifOrientation.Transform.NONE) return source
-    val matrix = Matrix().apply {
-        setValues(PiExifOrientation.matrixFor(transform, source.width, source.height))
-    }
-    return runCatching {
-        Bitmap.createBitmap(source, 0, 0, source.width, source.height, matrix, false)
-    }.getOrNull()
-}
-
-/**
- * One resize step; the source itself when the target is already its size.
- *
- * 缩得比 2 倍多时分步减半：`createScaledBitmap(filter = true)` 是双线性，只看相邻 2×2 个像素，
- * 一步缩 4000→1500 会直接漏掉中间的像素（锯齿、细线断掉、小字发糊）。pi 用的是 Lanczos3，
- * 看的是整片邻域；每步 ≤ 2 倍的双线性恰好等于 2×2 均值，连着做就是面积平均，细节保留得
- * 接近 Lanczos，且只改**像素怎么来**、不改尺寸与候选顺序（那些仍与 pi 一致）。
- */
-private fun scaleForAttachment(source: Bitmap, width: Int, height: Int): Bitmap? {
-    if (width == source.width && height == source.height) return source
-    var current = source
-    return runCatching {
-        while (current.width >= width * 2 && current.height >= height * 2) {
-            val next = Bitmap.createScaledBitmap(current, current.width / 2, current.height / 2, true)
-            if (current !== source) current.recycle()
-            current = next
-        }
-        val result = if (current.width == width && current.height == height) {
-            current
-        } else {
-            Bitmap.createScaledBitmap(current, width, height, true)
-        }
-        if (result !== current && current !== source) current.recycle()
-        result
-    }.getOrElse {
-        if (current !== source) current.recycle()
-        null
-    }
-}
-
-/** One encode step, as the wire value it becomes — the base64 the budget counts. */
-private fun encodeForAttachment(bitmap: Bitmap, encoding: AttachmentBudget.Encoding): PiImage? {
-    val out = java.io.ByteArrayOutputStream()
-    val ok = when (encoding) {
-        // PNG's quality parameter is ignored by the platform encoder; 100 is what pi's
-        // `get_bytes()` is equivalent to (lossless).
-        is AttachmentBudget.Encoding.Png -> bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-        is AttachmentBudget.Encoding.Jpeg -> bitmap.compress(Bitmap.CompressFormat.JPEG, encoding.quality, out)
-    }
-    if (!ok) return null
-    return PiImage(
-        base64 = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP),
-        mimeType = when (encoding) {
-            is AttachmentBudget.Encoding.Png -> "image/png"
-            is AttachmentBudget.Encoding.Jpeg -> "image/jpeg"
-        },
-    )
-}
-
-/**
- * The sentence for a file that was put in the workspace **because it could not be inlined**,
- * with [why] being the reason the inline path gave up.
- *
- * It has to say three things, and each one is load-bearing: where the file went (the user
- * can see 工作区), that it did **not** travel inside the message (otherwise the next question
- * is "why did the model not see it"), and that the model can still read it (the path is in
- * the composer, and pi's agent resolves it like any other path).
- *
- * This is not the 「已放入工作区」 notice D47 deleted: that one repeated a path that was
- * already in the composer and nothing else. Here the message's shape differs from what the
- * user asked for, so the composer's own contents cannot explain it.
- */
-private fun inlineDowngradeText(relativePath: String, why: String): String =
-    "已放进工作区 $relativePath —— $why，所以没有随消息内联；" +
-        "模型可以用工具读取这个文件。"
-
-/**
- * The sentence for a copy the disk refused, built only from the measurement that stopped it.
- *
- * 「至少需要」 is deliberate: [WorkspaceCopy.OutOfSpace.neededBytes] is the number of bytes
- * the source had already handed over, which is a lower bound on the file's size, not its
- * size. Saying "needs X" without the qualifier would be a claim this code cannot check.
- */
-private fun workspaceOutOfSpaceText(out: WorkspaceCopy.OutOfSpace): String =
-    "磁盘空间不足：这个文件至少需要 ${mibLabel(out.neededBytes)} MB，" +
-        "工作区所在磁盘可用 ${mibLabel(out.availableBytes)} MB" +
-        "（要留 ${mibLabel(out.marginBytes)} MB 余量）。" +
-        "它没有被复制进工作区，也没有加进这条消息；腾出空间后可以再选一次。"
-
-/**
- * One count in MiB, one decimal, locale-stable.
- *
- * A plain formatter rather than a unit conversion: the copies count **base64
- * characters** for pi's ceiling and **bytes** for the message budget, and both are
- * shown in the same MiB so the two numbers can be compared. `%.1f` rather than an
- * integer, because pi's own ceiling is 4.5 and truncating it to "4" would understate
- * what the composer is allowed to send by half a megabyte.
- *
- * The [Long] overload is for the disk figures, which are byte counts from `StatFs` and can
- * legitimately exceed an `Int`.
- */
-private fun mibLabel(count: Int): String =
-    String.format(java.util.Locale.US, "%.1f", count / 1024.0 / 1024.0)
-
-private fun mibLabel(count: Long): String =
-    String.format(java.util.Locale.US, "%.1f", count / 1024.0 / 1024.0)

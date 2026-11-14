@@ -1897,6 +1897,38 @@ function checkAppTables(piDir) {
 			`new commands stop appearing.`,
 	);
 
+	// ------------------------------------------------- tool / message renderer inputs
+	// 宿主替 TUI 调扩展的 renderCall / renderResult / 消息渲染器。扩展读什么，宿主就得给什么：
+	// 少给一个键，扩展那边就是 `undefined`（pi-web-access 的「undefined/undefined queries」就是少了
+	// `result.details`）。这里从 pi 的 tool-execution.js 读出它给渲染器的键，逐个对照宿主。
+	const toolExec = engine("modes/interactive/components/tool-execution.js");
+	const ctxBlock = /getRenderContext\(lastComponent\)\s*\{\s*return\s*\{([\s\S]*?)\n\s{8}\};/.exec(toolExec)?.[1] ?? "";
+	const piCtxKeys = [...ctxBlock.matchAll(/^\s{12}(\w+)[,:]/gm)].map((m) => m[1]);
+	const hostRender = read("app/src/main/assets/guest/sdk-host/commands/catalog.mjs");
+	check(
+		"pi's tool render context is still readable (>= 12 keys)",
+		piCtxKeys.length >= 12,
+		`tool-execution.js getRenderContext() answered ${piCtxKeys.length} keys. The reader expects the ` +
+			`object literal at 12-space indent; re-point it before the host-vs-pi comparison goes blind.`,
+	);
+	for (const key of piCtxKeys) {
+		check(
+			`the host's render.tool context carries \`${key}\` (pi gives it to renderCall/renderResult)`,
+			new RegExp(`\\b${key}\\b`).test(hostRender.slice(hostRender.indexOf('reg.add("render.tool"'))) ||
+				// keyText / keyHint come in through the shared `...hints` spread above render.tool.
+				(/\.\.\.hints/.test(hostRender) && new RegExp(`const hints = \\{[^}]*\\b${key}\\b`).test(hostRender)),
+			`pi's ToolExecutionComponent hands extension renderers \`context.${key}\`; commands/catalog.mjs's ` +
+				`render.tool must build it too, or an extension reading it sees undefined.`,
+		);
+	}
+	check(
+		"pi gives renderResult { content, details }, and the host forwards result.details",
+		/resultRenderer\(\{ content: this\.result\.content, details: this\.result\.details \}/.test(toolExec) &&
+			/put\("details", details\)/.test(read("app/src/main/kotlin/app/pi/host/HostCommands.kt")),
+		`pi calls renderResult with { content, details }. HostCommands.renderTool must put the tool's ` +
+			`details into the result it sends, or every renderer that reads details renders undefined.`,
+	);
+
 	// -------------------------------------------------------------- resource types
 	// App 侧不再有这张转录表（资源清单与开关整批交给宿主，见 assets/guest/sdk-host/commands/resources.mjs）：
 	// 键由 pi 自己的 `ConfigSelectorComponent.getResourceList()` 给出，App 一个都不写死。

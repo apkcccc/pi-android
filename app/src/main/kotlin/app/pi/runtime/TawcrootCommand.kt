@@ -46,6 +46,15 @@ object TawcrootCommand {
     ): List<Pair<String, String>> =
         ProrootCommand.boundPairs(paths, storage, extraBinds).filterNot { (_, guest) -> guest == "/dev/shm" }
 
+    /**
+     * 宿主侧进程的 cwd 必须**在 rootfs 里**。
+     *
+     * tawcroot 的 `getcwd` 是把内核 cwd 反向翻译回 guest 路径（`tawcroot_cwd_to_guest_abs`）；
+     * cwd 在 rootfs 外时它得到 -ENOENT，guest 的每一条相对路径都从"目录不存在"开始。
+     * 上游 TAWC 自己也把 tawcroot 进程的 cwd 放在 `<rootfs>/tmp`，理由相同。
+     */
+    fun hostCwd(paths: PiPaths): File = File(paths.rootfs, "tmp").also { it.mkdirs() }
+
     /** `cd <cwd> || exit 126` 接在 guest 命令前；`/` 本来就是 tawcroot 的起点，不加。 */
     fun withWorkdir(guestCommand: String, cwd: String): String =
         if (cwd == "/" || cwd.isEmpty()) guestCommand else "cd ${ShellQuote.quote(cwd)} || exit 126\n$guestCommand"
@@ -61,7 +70,7 @@ object TawcrootCommand {
         ProrootCommand.ensureWorkdir(paths.rootfs, cwd, binds)
         val argv = mutableListOf<String>()
         argv += paths.tawcrootBinary().absolutePath
-        argv += listOf("-r", paths.rootfs.path)
+        argv += listOf("-s", "-r", paths.rootfs.path)
         binds.forEach { (host, guest) -> argv += listOf("-b", "$host${ProrootCommand.BIND_SEPARATOR}$guest") }
         argv += "--"
         argv += GuestRecipe.shellArgs(withWorkdir(guestCommand, cwd))

@@ -26,7 +26,7 @@ object TawcrootProbe {
     const val EXEC_TIMEOUT_MS: Long = 20_000L
 
     private const val MAX_OUTPUT_CHARS = 64_000
-    private const val CACHE_VERSION = "t1"
+    private const val CACHE_VERSION = "t2"
 
     fun key(revision: String, digest: String): String =
         ProrootProbeCache.key(revision, digest, CACHE_VERSION)
@@ -91,7 +91,7 @@ object TawcrootProbe {
                 paths, GuestEngine.Tawcroot, ProrootExecProbe.guestCommand(), cwd = "/", storage = storage,
             )
             val process = ProcessBuilder(argv)
-                .directory(paths.runtime)
+                .directory(TawcrootCommand.hostCwd(paths))
                 .redirectErrorStream(true)
                 .also { it.environment().putAll(GuestCommandLine.environment(paths, GuestEngine.Tawcroot)) }
                 .start()
@@ -100,7 +100,20 @@ object TawcrootProbe {
                 process.destroyForcibly()
                 "tawcroot 探针 ${EXEC_TIMEOUT_MS / 1000} 秒没有返回"
             } else {
-                process.inputStream.reader().use { it.readText() }.take(MAX_OUTPUT_CHARS)
+                val code = runCatching { process.exitValue() }.getOrNull()
+                val text = process.inputStream.reader().use { it.readText() }.take(MAX_OUTPUT_CHARS)
+                // 没有标记行时把**进程退出码**和第一行原始输出补进去：tawcroot 崩溃（139）、
+                // bind 解析失败（84）、seccomp 装不上（88）在这里一眼分得开。没有这两个数，
+                // 真机上只能看到"没输出"，这正是这次卡住的原因。
+                if ("$ProrootExecProbe.MARKER" !in text) {
+                    val first = text.lineSequence().map { it.trim() }.firstOrNull { it.isNotEmpty() }
+                    buildString {
+                        if (text.isNotBlank()) append(text).append('\n')
+                        append("tawcroot: 探针退出码 ").append(code ?: "未知")
+                        if (first != null) append("；第一行输出：").append(first.take(200))
+                        append('\n')
+                    }
+                } else text
             }
         }.getOrElse { error -> "tawcroot 启动探针失败：${error::class.java.simpleName}: ${error.message}" }
         return ProrootExecProbe.parse(output)

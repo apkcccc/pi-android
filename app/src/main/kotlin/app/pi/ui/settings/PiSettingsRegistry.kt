@@ -1257,13 +1257,21 @@ object PiSettingsCatalog {
         // 会让用户以为还要自己动手，而那正是他要修掉的东西（「为什么还要退出软件重进呢」）。
         // ------------------------------------------------------------------
         PiSetting(
-            key = "app.runtime.proroot",
-            title = "运行时加速（实验性）",
-            description = "proroot 跑引擎；会探针并重启（闭源）。",
-            kind = PiRowKind.Switch,
+            key = "app.runtime.engine",
+            title = "运行时",
+            // 三选一，随时自由切换，选完当场探针并重启引擎。每个选项各自的状态写在下面
+            // 「各运行时状态」那一行里（选之前就能看到：可用 / 缺组件 / 探针没过 / 失败 N 次）。
+            // 装机、更新、维护永远用 proot，选的运行时不可用时也自动回退 proot。
+            description = "proot 最稳；proroot 闭源；tawcroot 开源。",
+            kind = PiRowKind.Value,
             group = G_RUNTIME,
             section = "运行时选择",
-            defaultValue = bool(false),
+            defaultValue = str("proot"),
+            options = choices(
+                "proot" to "proot（默认，最兼容）",
+                "proroot" to "proroot（闭源，实验性）",
+                "tawcroot" to "tawcroot（开源，实验性）",
+            ),
             effective = EffectiveKind.AutoRestartEngine,
         ),
         PiSetting(
@@ -1275,6 +1283,17 @@ object PiSettingsCatalog {
             // 不知道「探针未通过」到底卡在哪一步（缺陷原形：开关开着，行上只有半句话，
             // 唯一能看到证据的地方是导出的报告）。
             description = "这次用的运行时；没用上时括号里写原因。",
+            kind = PiRowKind.Text,
+            group = G_RUNTIME,
+            section = "运行时选择",
+            defaultValue = str("未读取"),
+            readOnly = true,
+        ),
+        PiSetting(
+            key = "app.runtime.engineMatrix",
+            title = "各运行时状态",
+            // 一行摘要，逐个运行时的明细（可用 / 缺组件 / 探针 / 失败次数）在行下面。
+            description = "三个运行时现在各自能不能用。",
             kind = PiRowKind.Text,
             group = G_RUNTIME,
             section = "运行时选择",

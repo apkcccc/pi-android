@@ -502,3 +502,19 @@ jobs:
       # 0.1.7 的「运行时解包失败 / No static method of(...)」就是这类。见脚本头部。
       - name: Reject Java 11+ APIs Android's runtime does not have
         run: bash tools/check-android-apis.sh
+
+  # tawcroot 从钉死的提交构建（无二进制下载）。不挡合并：构建脚本依赖上游的 build.sh，
+  # 上游改了它这里才会红；没有产物时 App 把 tawcroot 判「缺组件」并回退 proot。
+  tawcroot:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build libtawcroot.so from the pinned tag
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
+        run: bash tools/build-tawcroot.sh "$RUNNER_TEMP/tawcroot-out"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libtawcroot
+          path: ${{ runner.temp }}/tawcroot-out/libtawcroot.so

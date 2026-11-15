@@ -453,7 +453,7 @@ fun main() {
         "the failure streak names the count and the way out",
         listOf(
             sentences[EngineFallback.FailureStreak]?.contains("3 次启动失败") == true,
-            sentences[EngineFallback.FailureStreak]?.contains("重新打开开关") == true,
+            sentences[EngineFallback.FailureStreak]?.contains("重新选择该运行时") == true,
         ),
         listOf(true, true),
     )

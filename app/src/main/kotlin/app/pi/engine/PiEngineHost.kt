@@ -752,11 +752,7 @@ class PiEngineHost(private val appContext: Context) {
             // reaped at all — proroot rejects `--kill-on-exit` and
             // `PiEngineSession.close()` only destroys the direct child, so every stop
             // would leave `bash` and a Node engine behind.
-            val engineHandle = if (firstPlan.usingProroot) {
-                ProrootLaunchHandle.arm(paths.prorootTmpDir(), firstPlan.launchToken)
-            } else {
-                null
-            }
+            val engineHandle = firstPlan.armHandle(paths)
             val first = runCatching {
                 PiEngineSession.spawn(
                     argv = firstPlan.argv,
@@ -777,9 +773,9 @@ class PiEngineHost(private val appContext: Context) {
             // evidence a user can read (`lastProrootForensics`).
             var prorootSpawnError: Throwable? = null
             val spawned = first.recoverCatching { error ->
-                if (!firstPlan.usingProroot) throw error
+                if (!firstPlan.usingExperimental) throw error
                 prorootSpawnError = error
-                selection.recordProrootFailure("${error::class.java.simpleName}: ${error.message}")
+                selection.recordEngineFailure("${error::class.java.simpleName}: ${error.message}")
                 val retry = selection.plan(
                     guestCommand = guestCommand,
                     cwd = guestWorkspace,
@@ -798,7 +794,7 @@ class PiEngineHost(private val appContext: Context) {
 
             spawned.fold(
                 onSuccess = { session ->
-                    if (firstPlan.usingProroot) selection.recordProrootSuccess()
+                    if (firstPlan.usingExperimental) selection.recordEngineSuccess()
                     // The engine's own record-level problems (an event the flow could
                     // not deliver, a transcript fold that threw) are counted inside the
                     // session and read back by the diagnostic report; this is where they

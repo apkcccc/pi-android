@@ -318,19 +318,31 @@ fun PiSettingsStack(
     // Null until the first IO read lands: the row shows its own 未读取 for that frame and
     // the detail block renders nothing, rather than a default that looks like a reading.
     var runtimeStatus by remember { mutableStateOf<RuntimeSelection.Status?>(null) }
+    var engineStatuses by remember {
+        mutableStateOf<Map<app.pi.runtime.GuestEngine, RuntimeSelection.Status>?>(null)
+    }
     // `runtimeSwitch` is a key for the reason its KDoc gives: the toggle's own flow changes
     // the switch value (a refused restart rolls it back) and the cached verdict (a probe just
     // ran), and neither bump reaches this screen on its own — the epoch above only fires on
     // the write itself, which happens *before* the probe. It also covers a plain
     // `Probing → Idle` transition for a probe that changed nothing.
     LaunchedEffect(runtimeSelection, filesEpoch, runtimeStatusEpoch, runtimeSwitch) {
-        runtimeStatus = withContext(Dispatchers.IO) { runtimeSelection.status() }
+        val read = withContext(Dispatchers.IO) {
+            runtimeSelection.status() to app.pi.runtime.GuestEngine.entries.associateWith {
+                runtimeSelection.statusFor(it)
+            }
+        }
+        runtimeStatus = read.first
+        engineStatuses = read.second
     }
     // While the toggle's flow is doing something, the row says so instead of showing the
     // previous verdict: the probe runs for tens of seconds and a row that keeps showing the
     // old sentence is the "switch did nothing" shape this change removes. `null` (Idle) means
     // "show the real reading" — see `RuntimeSwitchAction.statusLine`.
-    val runtimeStatusText = RuntimeSwitchAction.statusLine(runtimeSwitch)
+    val runtimeStatusText = RuntimeSwitchAction.statusLine(
+        runtimeSwitch,
+        RuntimeSwitchAction.Target.valueOf(runtimeSelection.selectedEngine.name),
+    )
         ?: runtimeStatus?.summary
         ?: "未读取"
 
@@ -359,14 +371,15 @@ fun PiSettingsStack(
     val promptDetailOverrides = promptReading?.let { PromptFileFacts.detail(it) }
         ?.let { mapOf(PROMPT_SOURCE_KEY to it) } ?: emptyMap()
 
-    val effectiveStore = remember(activeStore, runtimeSelection, runtimeStatusText) {
-        AppOnlySettingsStore(activeStore, runtimeSelection, runtimeStatusText)
+    val engineMatrix = engineMatrixOverrides(engineStatuses)
+    val effectiveStore = remember(activeStore, runtimeSelection, runtimeStatusText, engineMatrix.first) {
+        AppOnlySettingsStore(activeStore, runtimeSelection, runtimeStatusText, engineMatrix.first)
     }
     // Turning the switch must refresh the status row in the same breath; an app-only
     // write touches no pi document, so nothing else in the stack would notice, and the
     // status text is exactly what a stale value would lie about.
     val handleSettingWritten: (String) -> Unit = { key ->
-        if (key == AppOnlySettingsStore.KEY_PROROOT) runtimeStatusEpoch++
+        if (key == AppOnlySettingsStore.KEY_ENGINE) runtimeStatusEpoch++
         // 先让宿主读它要读的（`refreshPrefs` / `refreshTheme` / proroot 的探针流程），再让这一栈
         // 的行重读 store。顺序反过来，proroot 那两行会先用旧的 `runtimeStatusText` 重读一次。
         onSettingWritten(key)
@@ -592,7 +605,12 @@ fun PiSettingsStack(
                     emptyMap()
                 } else {
                     runtimeDetailOverrides(runtimeStatus)
-                }) + promptDetailOverrides,
+                }) + promptDetailOverrides +
+                    (if (runtimeSwitch.inFlight || engineMatrix.second.isEmpty()) {
+                        emptyMap()
+                    } else {
+                        mapOf(AppOnlySettingsStore.KEY_MATRIX to engineMatrix.second)
+                    }),
                 // The same restart the 进程 section's action row asks for, offered
                 // from the badge explanation of a 需重启引擎 row.
                 onRestartEngine = { restartPrompt = true },

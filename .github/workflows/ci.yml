@@ -252,22 +252,19 @@ jobs:
       # 这一类"构建出来了但没进包"的错，只有解包 APK 才看得见：tawcroot 任务成功、
       # artifact 也在，但 APK 没下载它 —— 2026-11-15 用户装完才发现「缺组件」。
       # 所以在打包产物上断言一次，别让下一个人靠安装来验证。
-      - name: Verify the APK carries libtawcroot.so
-        run: |
-          set -euo pipefail
-          apk="$(ls app/build/outputs/apk/release/*.apk | head -1)"
-          if ! unzip -l "$apk" | grep -qE 'lib/arm64-v8a/libtawcroot\.so'; then
-            echo "::error::$apk has no lib/arm64-v8a/libtawcroot.so; selecting tawcroot on a device would only report 缺组件 and fall back to proot"
-            exit 1
-          fi
-          echo "libtawcroot.so: present"
-
       - name: Verify runtime payloads are stored uncompressed and unrecompressed
         run: |
           set -euo pipefail
           apk="$(ls app/build/outputs/apk/release/*.apk | head -1)"
           apk_bytes="$(stat -c %s "$apk")"
           echo "inspecting $apk ($apk_bytes bytes)"
+          # 运行时二进制必须在**产物**里，而不只是 jniLibs 里：打包规则（jniLibs.excludes、
+          # abiFilters、splits）可以在构建成功的前提下把它丢掉。与"文件放进了源码树"
+          # 是两条不同的断言；这里只是对已生成的 APK 多跑一次 `unzip -l`，1~2 秒。
+          if ! unzip -l "$apk" | grep -qE 'lib/arm64-v8a/libtawcroot\.so'; then
+            echo "::error::$apk has no lib/arm64-v8a/libtawcroot.so; selecting tawcroot would only report 缺组件 and fall back to proot"
+            exit 1
+          fi
           staged=app/src/main/assets/runtime
           ls -l "$staged"
 

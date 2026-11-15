@@ -32,6 +32,11 @@
 
 `tawcroot [-s] -r ROOTFS [-b SRC:DST[:ro]]... -- CMD...`。没有 `-w`/`-0`/`--link2symlink`；工作目录由 `/bin/bash -c "cd …"` 完成；硬链接由内置模拟处理；`/dev/shm` 由其用 memfd 模拟，所以**不绑定**宿主目录。环境变量原样透传。
 
+两条 tawcroot 特有的约束（2026-11-15 真机踩到）：
+
+- **`-b` 的源必须是目录**：它用 `O_PATH | O_DIRECTORY` 打开源，设备节点会 `bind add failed` 并 exit 93。proot 表里的 `/dev/urandom → /dev/random` 就是这一类，已从 tawcroot 的表里滤掉（`/dev` 已整棵绑定，功能不丢）。
+- **宿主进程 cwd 必须在 rootfs 内**：`getcwd` 是反向翻译，cwd 落在 rootfs 外时 guest 的相对路径全部 ENOENT。引擎、工具命令、终端与两个探针统一用 `<rootfs>/tmp`。
+
 ## 进程树回收
 
 proot：`--kill-on-exit`；proroot：`.proroot-config-<pid>` + 启动令牌；tawcroot：启动时注入 `PI_LAUNCH_TOKEN`，关闭时扫 `/proc/<pid>/environ` 找带令牌且父进程是本 App 的进程（`ProrootLaunchHandle.armByToken`）。

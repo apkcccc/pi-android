@@ -35,6 +35,14 @@ object GuestCommandLine {
         GuestEngine.Tawcroot -> TawcrootCommand.build(paths, guestCommand, cwd, storage, extraBinds)
     }
 
+    /**
+     * 宿主进程的 cwd。tawcroot 必须在 rootfs 里：它的 `getcwd` 是把内核 cwd 反向翻译回
+     * guest 路径，cwd 在 rootfs 外时 guest 的每条相对路径都从 ENOENT 开始（上游 TAWC 也把
+     * 它的 cwd 放在 `<rootfs>/tmp`）。proot / proroot 保持 `runtime`，不改既有行为。
+     */
+    fun hostCwd(paths: PiPaths, engine: GuestEngine): File =
+        if (engine == GuestEngine.Tawcroot) TawcrootCommand.hostCwd(paths) else paths.runtime
+
     fun environment(
         paths: PiPaths,
         engine: GuestEngine,

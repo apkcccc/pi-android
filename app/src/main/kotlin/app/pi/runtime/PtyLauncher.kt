@@ -282,7 +282,7 @@ object PtyLauncher {
     ): PtySession = PtySession.spawn(
         argv = prepared.argv,
         environment = prepared.environment,
-        workingDirectory = paths.runtime,
+        workingDirectory = GuestCommandLine.hostCwd(paths, prepared.engine),
         greeting = greetingFor(prepared),
         engine = prepared.engine,
         // proroot's scratch directory, so the session can identify this launch by

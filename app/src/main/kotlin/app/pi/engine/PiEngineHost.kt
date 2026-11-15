@@ -757,7 +757,7 @@ class PiEngineHost(private val appContext: Context) {
                 PiEngineSession.spawn(
                     argv = firstPlan.argv,
                     env = firstPlan.environment,
-                    cwd = paths.runtime,
+                    cwd = GuestCommandLine.hostCwd(paths, firstPlan.engine),
                     scope = scope,
                 )
             }
@@ -787,7 +787,7 @@ class PiEngineHost(private val appContext: Context) {
                 PiEngineSession.spawn(
                     argv = retry.argv,
                     env = retry.environment,
-                    cwd = paths.runtime,
+                    cwd = GuestCommandLine.hostCwd(paths, retry.engine),
                     scope = scope,
                 )
             }

@@ -38,13 +38,25 @@ object TawcrootCommand {
 
     fun bindArgument(value: String): String = ProrootCommand.bindArgument(value)
 
-    /** 绑定表：与 proroot 同一份，去掉 `/dev/shm`（见类说明）。 */
+    /**
+     * 绑定表：与 proroot 同一份，去掉两类 tawcroot 不支持的东西。
+     *
+     * 1. `/dev/shm`：tawcroot 用 memfd 自己模拟，绑定宿主目录反而会盖掉它。
+     * 2. **不是目录的源**：tawcroot 的 `tawcroot_path_add_bind` 用
+     *    `O_PATH | O_DIRECTORY` 打开源（`path.c:356`），开不了就
+     *    `bind add failed` + exit 93（`supervisor.c:104`）。proot 系的
+     *    `/dev/urandom:/dev/random` 是**设备节点**，正是这一类；而 `/dev` 整棵
+     *    已经绑进来了，`/dev/random` 本来就能用，这一条纯属 proot 的补丁。
+     *    —— 这就是 2026-11-15 真机上 tawcroot 探针四条全红的根因。
+     */
     fun boundPairs(
         paths: PiPaths,
         storage: File?,
         extraBinds: List<Pair<String, String>>,
     ): List<Pair<String, String>> =
-        ProrootCommand.boundPairs(paths, storage, extraBinds).filterNot { (_, guest) -> guest == "/dev/shm" }
+        ProrootCommand.boundPairs(paths, storage, extraBinds).filterNot { (host, guest) ->
+            guest == "/dev/shm" || !File(host).isDirectory
+        }
 
     /**
      * 宿主侧进程的 cwd 必须**在 rootfs 里**。

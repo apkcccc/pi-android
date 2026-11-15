@@ -203,7 +203,7 @@ class GuestCommand(private val layout: AgentLayout) {
         val handle = plan.armHandle(layout.paths)
         val process = try {
             ProcessBuilder(plan.argv)
-                .directory(layout.paths.runtime)
+                .directory(GuestCommandLine.hostCwd(layout.paths, plan.engine))
                 .also { it.environment().putAll(plan.environment) }
                 .start()
         } catch (error: Throwable) {

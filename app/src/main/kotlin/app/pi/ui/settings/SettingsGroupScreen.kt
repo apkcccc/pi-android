@@ -187,6 +187,9 @@ fun SettingsGroupScreen(
                             valueOverrides = valueOverrides,
                             detailOverrides = detailOverrides,
                             highlighted = setting.key == highlightKey,
+                            // 宿主登记的入口行（`packages` → 包管理屏）必须点得动，
+                            // 哪怕它 `readOnly`：见 `PiSettingRow.opensHostScreen`。
+                            opensHostScreen = hostActions.containsKey(setting.key),
                             onToggle = toggleRow,
                             onOpen = openRow,
                             onExplain = { explaining = it },
@@ -292,6 +295,8 @@ private fun SettingSlot(
     valueOverrides: Map<String, String>,
     detailOverrides: Map<String, String>,
     highlighted: Boolean,
+    /** 宿主给这一行登记了另一个屏（`hostActions`），见 `PiSettingRow.opensHostScreen`。 */
+    opensHostScreen: Boolean = false,
     onToggle: (PiSetting, Boolean) -> Unit,
     onOpen: (PiSetting) -> Unit,
     onExplain: (PiSetting) -> Unit,
@@ -303,6 +308,7 @@ private fun SettingSlot(
             valueText = valueOverrides[setting.key] ?: setting.display(setting.current(store)),
             checked = setting.boolIn(store, false),
             highlighted = highlighted,
+            opensHostScreen = opensHostScreen,
             onToggle = { next -> onToggle(setting, next) },
             onOpen = { onOpen(setting) },
             onExplainEffect = { onExplain(setting) },

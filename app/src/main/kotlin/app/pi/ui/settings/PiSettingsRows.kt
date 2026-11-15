@@ -71,6 +71,18 @@ fun PiSettingRow(
      * 挂第二种标记；主题选择列表里的「当前」徽标仍然保留（那是一个选项列表）。
      */
     highlighted: Boolean = false,
+    /**
+     * 这一行**打开的是另一屏**，而不是行内编辑器：宿主的 `hostActions` 里登记了它的
+     * key（`SettingsGroupScreen.hostActions` → `PiSettingsStack.hostActions`）。
+     *
+     * 它和 `readOnly` 不是同一件事，所以必须单独说：`readOnly` 的意思是「没有行内
+     * 编辑器」，而「扩展包与项目信任」正是**只读的入口**——数组由 `pi install` 写，
+     * 手改会留下"看着装了、其实没下载"的 spec（`PiSettingsRegistry` 里 `packages`
+     * 那一段），但这一行必须点得动，否则入口永远到不了。
+     *
+     * 默认 `false`：没有宿主登记的行，行为与以前完全一致（只读 → 不可点、无 chevron）。
+     */
+    opensHostScreen: Boolean = false,
 ) {
     when (setting.kind) {
         PiRowKind.Switch -> PiSettingsRowShell(highlighted = highlighted, modifier = modifier) {
@@ -112,14 +124,21 @@ fun PiSettingRow(
 
         // Value / Number / Text / List 都是「尾部值 + chevron」，只有编辑器不同
         // （06 §2：尾部值 13 等宽 + tabular）。
-        PiRowKind.Value, PiRowKind.Number, PiRowKind.Text, PiRowKind.List ->
+        PiRowKind.Value, PiRowKind.Number, PiRowKind.Text, PiRowKind.List -> {
+            // 「这一行有没有东西可打开」有两个来源，以前只认了其中一个：
+            //   1. 行内编辑器 —— 只读行没有（下面的历史注释说的就是这一类）；
+            //   2. 宿主登记的另一个屏 —— `opensHostScreen`。
+            // 只按 `readOnly` 判会连带把第 2 类也关掉：「扩展包与项目信任」正是只读
+            // （数组归 `pi install` 管），却是**入口**而不是编辑器，于是那一行既不可点、
+            // 也没有 chevron，`hostActions` 里的跳转永远等不到点击。
+            val openable = !setting.readOnly || opensHostScreen
             PiSettingsRowShell(
                 highlighted = highlighted,
                 modifier = modifier,
                 // 只读行（运行时事实）没有可打开的东西，所以**点击与 chevron 用同一个条件**：
                 // 以前只藏了 chevron，行却还能点开一个空的、禁用的编辑器 —— 行上写着当时的
                 // 引擎版本（`0.85.1`），sheet 里是空白（`docs/settings-audit-impl.md` §B4）。
-                onClick = if (setting.readOnly) null else onOpen,
+                onClick = if (openable) onOpen else null,
                 enabled = enabled,
             ) {
                 RowBody(
@@ -144,11 +163,13 @@ fun PiSettingRow(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                // 只读行（运行时事实）没有可打开的东西，v2 也不给它 chevron。
-                if (!setting.readOnly) {
+                // 只读行（运行时事实）没有可打开的东西，v2 也不给它 chevron；能打开
+                // 另一个屏的只读行（`opensHostScreen`）例外 —— 它确实有去处。
+                if (openable) {
                     PiSettingsChevron()
                 }
             }
+        }
     }
 }
 

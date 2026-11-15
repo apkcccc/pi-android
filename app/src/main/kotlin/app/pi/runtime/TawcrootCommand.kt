@@ -69,11 +69,15 @@ object TawcrootCommand {
     }
 
     fun environment(paths: PiPaths, extra: Map<String, String> = emptyMap()): Map<String, String> = buildMap {
-        // proroot 路径靠它让 pi 的 scandir 绕开 proroot 的 hook 缺陷（`docs/proroot-scandir-defect.md`）；
-        // tawcroot 没有那个缺陷，但这份 `--import` 是否仍需要由 guest 侧决定，不在这里偷偷去掉。
-        if (paths.scandirFix().isFile) {
-            put("NODE_OPTIONS", "--import=${ProrootCommand.SCANDIR_FIX_GUEST_PATH}")
-        }
+        // **故意不带 proroot 的 `NODE_OPTIONS=--import=scandir-fix.mjs`。**
+        //
+        // 那个补丁是为 proroot 的 `ptrace` + hook 路径里的 `scandir(3)` 缺陷写的
+        // （`docs/proroot-scandir-defect.md`）：路径翻译由 tracer 做，`getdents` 在
+        // bind 源是应用私有目录时会话返回 ENOENT。tawcroot 是**单进程、seccomp 陷阱 +
+        // 进程内处理**，没有 tracer，也没有那条 hook 路径；套上去只会掩盖真实的路径
+        // 映射问题（补丁只在失败后接管，所以"看起来正常"恰恰是最坏的结果）。
+        //
+        // 真机上如果 tawcroot 也复现同样的 ENOENT，再按证据加回来，并在补丁里打日志。
         putAll(GuestRecipe.environment(paths))
         putAll(extra)
     }

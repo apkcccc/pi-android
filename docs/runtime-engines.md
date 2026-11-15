@@ -38,8 +38,8 @@ proot：`--kill-on-exit`；proroot：`.proroot-config-<pid>` + 启动令牌；ta
 
 ## 构建
 
-`tools/build-tawcroot.sh`（需要 NDK）把 `libtawcroot.so` 放进 `jniLibs/arm64-v8a`。CI 的 `tawcroot` 任务不挡合并。没有该文件时 App 把 tawcroot 判「缺组件」，设置里仍可见但回退 proot。
+`tools/build-tawcroot.sh`（需要 NDK）把 `libtawcroot.so` 放进 `jniLibs/arm64-v8a`。CI 的 `tawcroot` 任务从钉死的 tag 构建它，**挡合并**：构建脚本坏了就该红在 CI，而不是等到装机。没有该文件时 App 把 tawcroot 判「缺组件」，设置里仍可见但回退 proot。
 
 ## 未验证（截至写本文时）
 
-未在真机运行 tawcroot；Kotlin 改动未经 Gradle 编译（开发沙箱没有 Gradle/NDK）；`NODE_OPTIONS` scandir 补丁原是为 proroot 加的，tawcroot 沿用，是否多余待真机验证。
+未在真机运行 tawcroot。**scandir 补丁不继承**：`NODE_OPTIONS=--import=scandir-fix.mjs` 只为 proroot 的 ptrace 路径注入；tawcroot 是单进程 seccomp 模拟、没有 tracer，套上去只会掩盖真实的路径映射问题。真机上如果 tawcroot 也复现同样的 ENOENT，再按证据加回并在补丁里记日志。

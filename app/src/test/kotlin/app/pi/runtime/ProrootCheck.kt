@@ -1125,26 +1125,44 @@ fun main() {
         java.io.File(System.getProperty("pi.repo.root") ?: "."),
         "app/src/main/kotlin/app/pi/runtime/RuntimeSelection.kt",
     ).readText().replace(Regex("\\s+"), " ")
-    val statsGuard = "val missing = if (enabled) paths.missingProrootComponents() else emptyList()"
-    check("both entry points guard the five stats with `enabled`", selectionSource.split(statsGuard).size - 1, 2)
+    // 2026-11-15：三选一之后，「缺哪些文件」由 `missingFor(engine)` 按**选中的引擎**回答，
+    // proot 返回空表（一个 stat 都不做）。两个调用点（`plan` 与 `statusFor`）都只走它，
+    // 于是要钉的是：proot 的分支不查、另两个各查自己那份、而清单函数只有一个入口。
     check(
-        "the five stats are called nowhere else",
+        "proot 不查组件，另两个各查自己那份",
+        selectionSource.contains("GuestEngine.Proot -> emptyList()") &&
+            selectionSource.contains("GuestEngine.Proroot -> paths.missingProrootComponents()") &&
+            selectionSource.contains("GuestEngine.Tawcroot -> paths.missingTawcrootComponents()"),
+        true,
+    )
+    check(
+        "每份组件清单只被 missingFor 点一次（两个调用点都走它）",
         selectionSource.split("missingProrootComponents()").size - 1,
-        2,
+        1,
+    )
+    check(
+        "tawcroot 的组件清单同样只有一个入口",
+        selectionSource.split("missingTawcrootComponents()").size - 1,
+        1,
     )
     check(
         "the gate is called only behind `enabled && filesPresent && not exhausted`",
-        selectionSource.contains("val probePassed = if (enabled && filesPresent && !RuntimeChoice.exhausted(failures)) { probe = gate(storage)"),
+        selectionSource.contains("val probePassed = if (enabled && filesPresent && !RuntimeChoice.exhausted(failures))") &&
+            selectionSource.contains("probe = gate(storage, selected)"),
         true,
     )
     check(
-        "the cache is read only behind `enabled && missing.isEmpty()`",
-        selectionSource.contains("val cached = if (enabled && missing.isEmpty()) { runCatching { ProrootProbe.cached("),
+        "the cache is read only behind `enabled && missing.isEmpty()`, per engine",
+        selectionSource.contains("val cached = if (enabled && missing.isEmpty())") &&
+            selectionSource.contains("GuestEngine.Proroot -> ProrootProbe.cached(") &&
+            selectionSource.contains("GuestEngine.Tawcroot -> TawcrootProbe.cached("),
         true,
     )
+    // 三选一之后，扫目录只对 proroot 有意义（`.proroot-config-*` 是 proroot 的启动表；
+    // tawcroot 没有 config 表，见 ProrootLaunchHandle 的注释）。
     check(
-        "the config sweep runs only when the switch is on",
-        selectionSource.split("if (enabled) sweepProrootConfigs()").size - 1,
+        "the config sweep runs only when proroot is the selected engine",
+        selectionSource.split("if (selected == GuestEngine.Proroot) sweepProrootConfigs()").size - 1,
         1,
     )
     check(

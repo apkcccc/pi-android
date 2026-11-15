@@ -270,50 +270,49 @@ fun main() {
 
 
     // ------------------------------------------------ 7. 三选一（Target）
-    val T = RuntimeSwitchAction.Target
     check(
         "R1 proot needs no probe, the other two probe first",
-        RuntimeSwitchAction.onWrite(T.Proot) == Step.RestartingToProot &&
-            RuntimeSwitchAction.onWrite(T.Proroot) == Step.Probing &&
-            RuntimeSwitchAction.onWrite(T.Tawcroot) == Step.Probing,
+        RuntimeSwitchAction.onWrite(RuntimeSwitchAction.Target.Proot) == Step.RestartingToProot &&
+            RuntimeSwitchAction.onWrite(RuntimeSwitchAction.Target.Proroot) == Step.Probing &&
+            RuntimeSwitchAction.onWrite(RuntimeSwitchAction.Target.Tawcroot) == Step.Probing,
     )
     check(
         "R2 only a passed probe for the still-selected target restarts onto it",
-        RuntimeSwitchAction.afterProbe(T.Tawcroot, T.Tawcroot, true) == Step.RestartingToTawcroot &&
-            RuntimeSwitchAction.afterProbe(T.Proroot, T.Proroot, true) == Step.RestartingToProroot &&
-            RuntimeSwitchAction.afterProbe(T.Tawcroot, T.Tawcroot, false) == Step.Idle,
+        RuntimeSwitchAction.afterProbe(RuntimeSwitchAction.Target.Tawcroot, RuntimeSwitchAction.Target.Tawcroot, true) == Step.RestartingToTawcroot &&
+            RuntimeSwitchAction.afterProbe(RuntimeSwitchAction.Target.Proroot, RuntimeSwitchAction.Target.Proroot, true) == Step.RestartingToProroot &&
+            RuntimeSwitchAction.afterProbe(RuntimeSwitchAction.Target.Tawcroot, RuntimeSwitchAction.Target.Tawcroot, false) == Step.Idle,
     )
     check(
         "R3 a selection that changed during the probe is stale, whatever the verdict",
-        T.entries.all { sel -> T.entries.filter { it != sel }.all { w ->
+        RuntimeSwitchAction.Target.entries.all { sel -> RuntimeSwitchAction.Target.entries.filter { it != sel }.all { w ->
             RuntimeSwitchAction.afterProbe(sel, w, true) == Step.Idle
         } },
     )
     check(
         "R4 a refused restart never leaves a non-proot selection behind",
-        T.entries.all { RuntimeSwitchAction.settle(it, RestartResult.Refused) == T.Proot },
+        RuntimeSwitchAction.Target.entries.all { RuntimeSwitchAction.settle(it, RestartResult.Refused) == RuntimeSwitchAction.Target.Proot },
     )
     check(
         "R5 ok/failed keep what the user wrote",
-        T.entries.all {
+        RuntimeSwitchAction.Target.entries.all {
             RuntimeSwitchAction.settle(it, RestartResult.Ok) == it &&
                 RuntimeSwitchAction.settle(it, RestartResult.Failed) == it
         },
     )
     check(
         "R6 only switching back to proot may interrupt a running turn",
-        RuntimeSwitchAction.allowInterrupt(T.Proot) &&
-            !RuntimeSwitchAction.allowInterrupt(T.Proroot) &&
-            !RuntimeSwitchAction.allowInterrupt(T.Tawcroot),
+        RuntimeSwitchAction.allowInterrupt(RuntimeSwitchAction.Target.Proot) &&
+            !RuntimeSwitchAction.allowInterrupt(RuntimeSwitchAction.Target.Proroot) &&
+            !RuntimeSwitchAction.allowInterrupt(RuntimeSwitchAction.Target.Tawcroot),
     )
     check(
         "R7 the probing line names the runtime under test",
-        RuntimeSwitchAction.statusLine(Step.Probing, T.Tawcroot)?.contains("tawcroot") == true &&
-            RuntimeSwitchAction.statusLine(Step.Probing, T.Proroot)?.contains("proroot") == true,
+        RuntimeSwitchAction.statusLine(Step.Probing, RuntimeSwitchAction.Target.Tawcroot)?.contains("tawcroot") == true &&
+            RuntimeSwitchAction.statusLine(Step.Probing, RuntimeSwitchAction.Target.Proroot)?.contains("proroot") == true,
     )
     check(
         "R8 restartingTo is a bijection onto the three restart steps",
-        T.entries.map { RuntimeSwitchAction.restartingTo(it) }.toSet().size == 3,
+        RuntimeSwitchAction.Target.entries.map { RuntimeSwitchAction.restartingTo(it) }.toSet().size == 3,
     )
 
     println(if (failures == 0) "\nharness: OK (all checks passed)" else "\nharness: FAILED ($failures)")

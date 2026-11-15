@@ -130,7 +130,10 @@ class ProrootLaunchHandle private constructor(
      * 这正是我们要的范围。
      */
     private fun scanForToken(): Int? {
-        val me = runCatching { android.os.Process.myPid() }.getOrNull() ?: return null
+        // `android.os.Process.myPid()` 是 Android API；这个文件被 `proroot` harness 在裸 JVM 上
+        // 编译（见 tools/run-app-pure-checks.sh），所以只能读 `/proc/self`。Android 也是 Linux，
+        // 同一个 uid 的 `/proc` 可读范围与原来一致。
+        val me = runCatching { File("/proc/self").canonicalFile.name.toInt() }.getOrNull() ?: return null
         val pids = runCatching { File("/proc").list() }.getOrNull().orEmpty().mapNotNull { it.toIntOrNull() }
         return pids.firstOrNull { pid -> pid != me && parentOf(pid) == me && carriesLaunchToken(pid) }
     }

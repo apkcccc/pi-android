@@ -192,7 +192,6 @@ fun ChatScreen(
     onOpenSettings: () -> Unit,
 ) {
     val state by session.state.collectAsState()
-    val renderRev by session.renderRev.collectAsState()
     val bottomInset = contentPadding.calculateBottomPadding()
 
     // D31: the boot surface is for **work** and for **failure** only.
@@ -341,6 +340,10 @@ internal fun ChatBody(
     onOpenWorkspace: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
+    // 扩展渲染器的键：宿主让 App 重取渲染结果时 +1，三个 `remember(renderRev)` 靠它失效。
+    // 拆文件之前这个值在 `ChatScreen` 里读；`ChatBody` 现在自己读，否则 2010 行附近那三个
+    // `remember(renderRev)` 引用的就是不存在的东西（0.1.7.1 之后的编译红）。
+    val renderRev by session.renderRev.collectAsState()
     // `draft` and `attachments` are the **ViewModel's** state, not this composable's:
     // `session.composerDraft` ([ComposerDraft]). Nothing about them reaches the Bundle.
     //

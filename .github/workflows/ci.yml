@@ -507,12 +507,29 @@ jobs:
   # 上游改了它这里才会红；没有产物时 App 把 tawcroot 判「缺组件」并回退 proot。
   tawcroot:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
+      # 与 APK 任务同样的 SDK 接法（runner 自带 SDK，action 挂不上去也不致命）。
+      - uses: android-actions/setup-android@v3
+        continue-on-error: true
+      - name: Ensure an NDK is available
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          if [ ! -d "$SDK" ]; then
+            echo "::error::no Android SDK at $SDK"
+            exit 1
+          fi
+          if ! ls -d "$SDK"/ndk/* >/dev/null 2>&1; then
+            # runner 的 cmdline-tools 目录名随镜像变（16.0 / latest 都见过），别写死。
+            sdkm="$(command -v sdkmanager || find "$SDK/cmdline-tools" -maxdepth 3 -name sdkmanager -type f 2>/dev/null | sort -V | tail -1)"
+            [ -n "$sdkm" ] || { echo "::error::no sdkmanager under $SDK"; exit 1; }
+            yes 2>/dev/null | "$sdkm" --licenses >/dev/null 2>&1 || true
+            yes 2>/dev/null | "$sdkm" --install "ndk;27.2.12479018" >/dev/null 2>&1 || true
+          fi
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          ls -d "$SDK"/ndk/* || { echo "::error::still no NDK under $SDK/ndk"; exit 1; }
       - name: Build libtawcroot.so from the pinned tag
-        env:
-          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
         run: bash tools/build-tawcroot.sh "$RUNNER_TEMP/tawcroot-out"
       - uses: actions/upload-artifact@v4
         with:

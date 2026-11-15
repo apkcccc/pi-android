@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import app.pi.bridge.DeviceBridgeController
 import app.pi.runtime.BootAudit
+import app.pi.runtime.GuestCommandLine
 import app.pi.runtime.GuestTreeReaper
 import app.pi.runtime.GuestWorkspacePath
 import app.pi.runtime.PiPaths

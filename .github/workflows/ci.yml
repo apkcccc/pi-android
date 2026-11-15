@@ -67,6 +67,10 @@ jobs:
   apk:
     name: APK (${{ matrix.variant }})
     runs-on: ubuntu-latest
+    # tawcroot 先构建，APK 再把 `libtawcroot.so` 打进去。**没有它，设置里选 tawcroot
+    # 只会得到「缺组件」并回退 proot** —— 这正是用户在 2026-11-15 装出来的那版
+    # （二进制只在 tawcroot 任务的 artifact 里，APK 里没有）。
+    needs: tawcroot
     strategy:
       fail-fast: false
       matrix:
@@ -80,6 +84,16 @@ jobs:
             targetSdk: 36
     steps:
       - uses: actions/checkout@v4
+      # tawcroot 的产物进 jniLibs：`lib*.so` 才会被 Android 解到 nativeLibraryDir，
+      # 而那正是 `PiRuntime.tawcrootBinary()` 去看的位置。
+      - uses: actions/download-artifact@v4
+        with:
+          name: libtawcroot
+          path: app/src/main/jniLibs/arm64-v8a
+      - name: Assert the runtime binary is in the APK inputs
+        run: |
+          ls -l app/src/main/jniLibs/arm64-v8a/libtawcroot.so
+          file app/src/main/jniLibs/arm64-v8a/libtawcroot.so
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

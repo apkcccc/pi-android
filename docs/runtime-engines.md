@@ -38,7 +38,7 @@ proot：`--kill-on-exit`；proroot：`.proroot-config-<pid>` + 启动令牌；ta
 
 ## 构建
 
-`tools/build-tawcroot.sh`（需要 NDK）把 `libtawcroot.so` 放进 `jniLibs/arm64-v8a`。CI 的 `tawcroot` 任务从钉死的 tag 构建它，**挡合并**：构建脚本坏了就该红在 CI，而不是等到装机。没有该文件时 App 把 tawcroot 判「缺组件」，设置里仍可见但回退 proot。
+`tools/build-tawcroot.sh`（需要 NDK）把 `libtawcroot.so` 放进 `jniLibs/arm64-v8a`。CI 的 `tawcroot` 任务从钉死的 tag 构建它，**挡合并**：构建脚本坏了就该红在 CI，而不是等到装机；APK 任务依赖这个任务，把产物一起打进包里（否则设置里选 tawcroot 只会得到「缺组件」并回退 proot）。没有该文件时 App 把 tawcroot 判「缺组件」，设置里仍可见但回退 proot。
 
 ## 未验证（截至写本文时）
 

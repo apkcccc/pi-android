@@ -2,6 +2,7 @@ package app.pi.ui.extension
 
 import androidx.compose.runtime.staticCompositionLocalOf
 import app.pi.host.HostCommands
+import app.pi.rpc.ExtensionEntry
 import app.pi.rpc.HookMessage
 import app.pi.rpc.ToolCall
 import app.pi.rpc.ToolStatus
@@ -93,4 +94,68 @@ internal class MessageRendererCache(private val fetch: suspend (HookMessage, Boo
     }
 
     fun reset() { absent.clear(); last.clear() }
+}
+
+/**
+ * 扩展自己的 `custom` 会话条目：[render] 返回 null = 宿主不可达；[HostCommands.EntryRender.hasRenderer] 为 false
+ * = 没有渲染器，pi 什么也不画。结果按（条目、展开态）缓存，「是否有渲染器」按 customType 缓存。
+ */
+fun interface EntryRenderer {
+    suspend fun render(item: ExtensionEntry, expanded: Boolean): List<String>?
+}
+
+val LocalEntryRenderer = staticCompositionLocalOf<EntryRenderer?> { null }
+
+/**
+ * 扩展的 markdown transformer（`registerMarkdownTransformer`）：TUI 在 Assistant/UserMessageComponent 里
+ * 逐条套用。这里只对**已完成**的消息套用（流式时每个 token 往返一次宿主不值得；与 TUI 的差别写在文档里）。
+ */
+fun interface MarkdownTransform {
+    suspend fun transform(markdown: String, messageType: String, messageId: String): String
+}
+
+val LocalMarkdownTransform = staticCompositionLocalOf<MarkdownTransform?> { null }
+
+/** 没有任何扩展注册 transformer 时（count == 0）一次都不再问；有则按（消息、原文）缓存。 */
+internal class MarkdownTransformCache(private val fetch: suspend (String, String, String) -> HostCommands.MarkdownRender) {
+    private var none = false
+    private val last = HashMap<Pair<String, Int>, String>()
+
+    suspend fun transform(markdown: String, messageType: String, messageId: String): String {
+        if (none || markdown.isEmpty()) return markdown
+        val key = messageId to markdown.hashCode()
+        last[key]?.let { return it }
+        val result = fetch(markdown, messageType, messageId)
+        if (result.count == 0) { none = true; return markdown }
+        if (last.size > 300) last.clear()
+        last[key] = result.markdown
+        return result.markdown
+    }
+
+    fun reset() { none = false; last.clear() }
+}
+
+internal class EntryRendererCache(private val fetch: suspend (ExtensionEntry, Boolean) -> HostCommands.EntryRender) {
+    private val absent = HashSet<String>()
+    private val present = HashSet<String>()
+    private val last = HashMap<Triple<String, Int, Boolean>, List<String>>()
+
+    /** 已确认有渲染器的 customType（可见性过滤用）。 */
+    fun hasRenderer(customType: String) = customType in present
+    fun known(customType: String) = customType in absent || customType in present
+
+    suspend fun render(item: ExtensionEntry, expanded: Boolean): List<String>? {
+        if (item.customType in absent) return null
+        val key = Triple(item.key, item.data.hashCode(), expanded)
+        last[key]?.let { return it }
+        val result = fetch(item, expanded)
+        if (!result.hasRenderer) { absent += item.customType; return null }
+        present += item.customType
+        val lines = result.lines ?: return null
+        if (last.size > 200) last.clear()
+        last[key] = lines
+        return lines
+    }
+
+    fun reset() { absent.clear(); present.clear(); last.clear() }
 }

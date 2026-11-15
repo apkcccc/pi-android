@@ -63,7 +63,7 @@ stderr 是日志，不是协议。源码：`app/src/main/assets/guest/sdk-host/p
 `model.list` · `model.set {provider,modelId}` · `model.cycle` · `thinking.levels` · `thinking.set {level}` · `thinking.cycle` · `queue.steeringMode {mode}` · `queue.followUpMode {mode}`
 
 ### catalog
-`catalog.commands`（扩展命令 + 提示模板 + 技能）· `catalog.tools` · `catalog.setTools {names}` · `render.message {customType,message,width,expanded?}`（调扩展注册的消息渲染器）
+`catalog.commands`（扩展命令 + 提示模板 + 技能）· `catalog.tools` · `catalog.setTools {names}` · `render.message {customType,message,width,expanded?}`（官方 `CustomMessageComponent`）· `render.tool {toolName,toolCallId,args,result?,isPartial?,argsComplete?,…}`（官方 `ToolExecutionComponent`，经 `resolveToolRenderers`）· `render.entry {customType,id,data,width,expanded?}`（扩展 `registerEntryRenderer`，官方 `CustomEntryComponent`）· `render.markdown {markdown,messageType,isStreaming,width}`（扩展 `registerMarkdownTransformer` 链）；事件 `render.invalidate`（官方组件 `requestRender`，App 重取）
 
 ### ui（App → 宿主的 UI 回路）
 | 命令 | 参数 | 说明 |

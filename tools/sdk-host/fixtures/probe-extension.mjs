@@ -8,6 +8,13 @@ export default function probe(pi) {
     dispose: () => {},
   }));
 
+  // 自定义会话条目的渲染器（`appendEntry` 写的 `custom` 条目）与 markdown transformer。
+  pi.registerEntryRenderer?.("probe-entry", (entry, options, theme) => ({
+    render: () => [theme.fg("accent", `entry<${JSON.stringify(entry.data)}> expanded=${options.expanded} key=${typeof options.keyHint}`)],
+    invalidate: () => {},
+  }));
+  pi.registerMarkdownTransformer?.((markdown, context) => markdown.replaceAll("PROBE", `[${context.messageType}:${context.isStreaming}]`));
+
   // 带自定义渲染器的工具：测 render.tool 把 renderCall / renderResult 渲成行，且同一次调用共享 state。
   pi.registerTool?.({
     name: "probe_tool",

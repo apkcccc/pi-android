@@ -2,6 +2,7 @@ package app.pi.ui.blocks
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import app.pi.rpc.AssistantText
 import app.pi.rpc.PiImage
@@ -69,7 +70,12 @@ fun AssistantTextBlock(
             // 光标 `▍` 接在 Markdown 源码末尾（`withStreamingCursor`），紧跟最后一个字，也不占
             // 布局宽度：原来是正文旁边另放一个 8×16 的方块，贴着整块正文的右缘（最后一行很短
             // 时离字很远），并且流式结束它消失的那一帧正文变宽、已断好的行会重排。
-            val shown = if (item.streaming) withStreamingCursor(item.text) else item.text
+            // 扩展的 markdown transformer（`registerMarkdownTransformer`）：只对已完成的消息套用。
+            val transform = app.pi.ui.extension.LocalMarkdownTransform.current
+            val transformed by androidx.compose.runtime.produceState(item.text, item.key, item.text, item.streaming, transform) {
+                value = if (item.streaming || transform == null) item.text else transform.transform(item.text, "assistant", item.key)
+            }
+            val shown = if (item.streaming) withStreamingCursor(item.text) else transformed
             if (shown.isNotEmpty()) {
                 PiMarkdownText(
                     markdown = shown,

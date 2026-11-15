@@ -206,6 +206,12 @@ try {
 
   const rendered = await h.call("render.message", { customType: "probe", message: { content: "hi" }, width: 50 });
   expect("render.message 调到了扩展的渲染器", rendered.ok && rendered.data.lines?.some((l) => l.includes("width=50")), JSON.stringify(rendered));
+  const re1 = await h.call("render.entry", { customType: "probe-entry", id: "e1", data: { n: 1 }, width: 50, expanded: true });
+  expect("render.entry 调到了扩展的 entry 渲染器（官方 CustomEntryComponent）", re1.ok && re1.data.lines?.some((l) => l.includes('entry<{"n":1}> expanded=true key=function')), JSON.stringify(re1));
+  const re2 = await h.call("render.entry", { customType: "nobody", id: "e2", data: {}, width: 50 });
+  expect("没有渲染器的 custom 条目 → no_renderer（和 pi 一样什么也不画）", re2.ok && re2.data.lines === null && re2.data.reason === "no_renderer", JSON.stringify(re2));
+  const rmd = await h.call("render.markdown", { markdown: "a PROBE b", messageType: "assistant", isStreaming: false, width: 50 });
+  expect("render.markdown 走扩展的 markdown transformer，带 messageType / isStreaming 上下文", rmd.ok && rmd.data.markdown === "a [assistant:false] b" && rmd.data.count >= 1 && rmd.data.changed === true, JSON.stringify(rmd));
 
   // 宿主持状态：open 之后主动推一份完整快照，变更类命令的应答里带最新状态（App 不用再 get_xxx）。
   const pushed = await h.waitFor(h.evt("state", (d) => d.state?.sessionId), 5000);

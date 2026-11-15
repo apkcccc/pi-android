@@ -220,6 +220,7 @@ class HostCommands(
         width: Int,
         details: JsonElement? = null,
         images: List<app.pi.rpc.PiImage> = emptyList(),
+        argsComplete: Boolean = true,
     ): ToolRender {
         val data = client.call("render.tool", obj {
             put("toolName", JsonPrimitive(toolName))
@@ -240,6 +241,9 @@ class HostCommands(
             }
             put("expanded", JsonPrimitive(expanded))
             put("isPartial", JsonPrimitive(isPartial))
+            // 参数还在流式生成时（`toolcall_start` 占位、`toolcall_end` 才有完整参数）官方组件两者皆 false。
+            put("argsComplete", JsonPrimitive(argsComplete))
+            put("executionStarted", JsonPrimitive(argsComplete))
             durationMs?.let { put("durationMs", JsonPrimitive(it)) }
             put("width", JsonPrimitive(width))
         }) as? JsonObject
@@ -272,6 +276,41 @@ class HostCommands(
             put("width", JsonPrimitive(width))
         }) as? JsonObject
         return (data?.get("lines") as? JsonArray)?.map { (it as? JsonPrimitive)?.content ?: it.toString() }
+    }
+
+    /** `render.entry` 的结果：[hasRenderer] 为 false = 没有扩展给这个 customType 注册渲染器（pi 此时什么也不画）。 */
+    data class EntryRender(val lines: List<String>?, val hasRenderer: Boolean)
+
+    /** `render.entry`：扩展 `registerEntryRenderer` 注册的渲染器（官方 `CustomEntryComponent`），按 [width] 列渲染成行。 */
+    suspend fun renderEntry(customType: String, id: String, data: JsonElement?, expanded: Boolean, width: Int): EntryRender {
+        val out = client.call("render.entry", obj {
+            put("customType", JsonPrimitive(customType))
+            put("id", JsonPrimitive(id))
+            if (data != null) put("data", data)
+            put("expanded", JsonPrimitive(expanded))
+            put("width", JsonPrimitive(width))
+        }) as? JsonObject
+        val lines = (out?.get("lines") as? JsonArray)?.map { (it as? JsonPrimitive)?.content ?: it.toString() }
+        val reason = (out?.get("reason") as? JsonPrimitive)?.content
+        return EntryRender(lines, hasRenderer = reason != "no_renderer")
+    }
+
+    /** `render.markdown` 的结果；[count] 为 0 = 没有扩展注册 markdown transformer，调用方可以不再问。 */
+    data class MarkdownRender(val markdown: String, val count: Int)
+
+    /** `render.markdown`：把一段 markdown 交给扩展的 `registerMarkdownTransformer` 链（与 TUI 同序同上下文）。 */
+    suspend fun renderMarkdown(markdown: String, messageType: String, isStreaming: Boolean, width: Int, messageId: String? = null): MarkdownRender {
+        val out = client.call("render.markdown", obj {
+            put("markdown", JsonPrimitive(markdown))
+            put("messageType", JsonPrimitive(messageType))
+            put("isStreaming", JsonPrimitive(isStreaming))
+            put("width", JsonPrimitive(width))
+            if (messageId != null) put("messageId", JsonPrimitive(messageId))
+        }) as? JsonObject
+        return MarkdownRender(
+            (out?.get("markdown") as? JsonPrimitive)?.content ?: markdown,
+            (out?.get("count") as? JsonPrimitive)?.content?.toIntOrNull() ?: 0,
+        )
     }
 
     suspend fun uiInput(surfaceId: String, data: String) {

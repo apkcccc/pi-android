@@ -106,6 +106,7 @@ internal fun searchHits(item: TranscriptItem, query: String): Boolean = when (it
     is CompactionMarker -> item.summary.hits(query)
     is BranchSummary -> item.summary.hits(query)
     is HookMessage -> item.markdown.hits(query)
+    is app.pi.rpc.ExtensionEntry -> false
     is ModelChange -> listOfNotNull(item.provider, item.modelId).joinToString("/").hits(query)
     is SkillInvocation -> listOf(item.skillName, item.body).joinToString("\n").hits(query)
     is ErrorText -> listOfNotNull(item.message, item.detail).joinToString("\n").hits(query)

@@ -784,11 +784,15 @@ internal fun ChatBody(
         searchScan++
     }
 
-    val visibleItems = remember(state.transcript, prefs.showTimestamps) {
-        if (prefs.showTimestamps) {
-            state.transcript
-        } else {
-            state.transcript.filterNot { it is DateSeparator }
+    // 扩展的 `custom` 条目只在扩展注册了 `registerEntryRenderer` 时可见（pi：没渲染器就不添加任何子组件）。
+    val entryRenderable by session.entryRenderable.collectAsState()
+    val visibleItems = remember(state.transcript, prefs.showTimestamps, entryRenderable) {
+        state.transcript.filter { item ->
+            when (item) {
+                is DateSeparator -> prefs.showTimestamps
+                is app.pi.rpc.ExtensionEntry -> item.customType in entryRenderable
+                else -> true
+            }
         }
     }
     // The ViewModel's coarse tool clock (`UiState.nowMs`): what every 「已运行 N 秒」 in the
@@ -2006,6 +2010,10 @@ internal fun ChatBody(
                         app.pi.ui.extension.LocalToolRenderer provides remember(renderRev) {
                             app.pi.ui.extension.ToolRenderer { item, expanded -> session.toolRenderer.render(item, expanded) }
                         },
+                        app.pi.ui.extension.LocalEntryRenderer provides remember(renderRev) {
+                            app.pi.ui.extension.EntryRenderer { item, expanded -> session.entryRenderer.render(item, expanded) }
+                        },
+                        app.pi.ui.extension.LocalMarkdownTransform provides session.markdownTransform,
                         app.pi.ui.extension.LocalMessageRenderer provides remember(renderRev) {
                             app.pi.ui.extension.MessageRenderer { item, expanded -> session.messageRenderer.render(item, expanded) }
                         },

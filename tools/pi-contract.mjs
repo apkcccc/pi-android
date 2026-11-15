@@ -1926,6 +1926,19 @@ function checkAppTables(piDir) {
 		`TUI draws a tool with extensionRunner.resolveToolRenderers(name, base); the host must use the same chain, ` +
 			`or extensions that take over a tool's rendering (registerToolRenderer) are ignored.`,
 	);
+	// 扩展的另外两个渲染入口：自定义会话条目（registerEntryRenderer）与 markdown transformer。
+	const customEntry = engine("modes/interactive/components/custom-entry.js");
+	const runnerSrc = engine("core/extensions/runner.js");
+	check(
+		"custom session entries are drawn by pi's CustomEntryComponent through the runner's entry renderers",
+		/export class CustomEntryComponent/.test(customEntry) && /hasContent\(\)/.test(customEntry) &&
+			/getEntryRenderer\(customType\)/.test(runnerSrc) &&
+			/getMarkdownTransformers\(\)/.test(runnerSrc) &&
+			/new CustomEntryComponent\(/.test(hostRender) && /getEntryRenderer\(customType\)/.test(hostRender) &&
+			/getMarkdownTransformers\(\)/.test(hostRender),
+		`render.entry / render.markdown in commands/catalog.mjs rely on CustomEntryComponent (loaded by file path: it is ` +
+			`not a public export), runner.getEntryRenderer and runner.getMarkdownTransformers.`,
+	);
 	check(
 		"pi still exports the components and initTheme the host needs",
 		/ToolExecutionComponent/.test(engine("index.d.ts")) && /CustomMessageComponent/.test(engine("index.d.ts")) && /initTheme/.test(engine("index.d.ts")),

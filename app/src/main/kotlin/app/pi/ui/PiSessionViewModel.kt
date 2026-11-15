@@ -78,6 +78,11 @@ import app.pi.ui.chat.builtinRows
 import app.pi.ui.chat.piCommandPalette
 import app.pi.ui.chat.wantsSummary
 import app.pi.ui.extension.ComposerFill
+import app.pi.rpc.ExtensionEntry
+import app.pi.ui.extension.EntryRenderer
+import app.pi.ui.extension.EntryRendererCache
+import app.pi.ui.extension.MarkdownTransform
+import app.pi.ui.extension.MarkdownTransformCache
 import app.pi.ui.extension.ExtensionAnswer
 import app.pi.ui.extension.ExtensionDialog
 import app.pi.ui.extension.ExtensionDialogMethod
@@ -2268,12 +2273,17 @@ class PiSessionViewModel(app: Application) : AndroidViewModel(app) {
             engine.extUi.collect { ext -> _state.value = _state.value.copy(ext = ext) }
         }
         // 官方渲染组件自己要求重绘（`ui.requestRender()`：动画、定时刷新）→ 清缓存、换一版，卡片重取。
+        entryProbeJob?.cancel()
+        entryProbeJob = viewModelScope.launch {
+            _state.map { it.transcript }.distinctUntilChanged().collect { probeEntryTypes(it) }
+        }
         renderInvalidateJob?.cancel()
         renderInvalidateJob = viewModelScope.launch {
             engine.hostEvents.collect { ev ->
                 if (ev.name == "render.invalidate") {
                     toolRenderCache.reset()
                     messageRenderCache.reset()
+                    entryRenderCache.reset()
                     _renderRev.value += 1
                 }
             }
@@ -3234,6 +3244,9 @@ class PiSessionViewModel(app: Application) : AndroidViewModel(app) {
     private fun clearExtensionChrome() {
         toolRenderCache.reset()
         messageRenderCache.reset()
+        entryRenderCache.reset()
+        markdownTransformCache.reset()
+        _entryRenderable.value = emptySet()
         _state.value = _state.value.copy(
             ext = ExtUiState(),
             windowTitle = null,
@@ -4262,6 +4275,7 @@ class PiSessionViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private var renderInvalidateJob: Job? = null
+    private var entryProbeJob: Job? = null
     private val _renderRev = MutableStateFlow(0)
 
     /** 宿主说「渲染结果变了」时加一；聊天页据此换一个 [ToolRenderer] 实例，卡片的 produceState 就重取。 */
@@ -4277,6 +4291,7 @@ class PiSessionViewModel(app: Application) : AndroidViewModel(app) {
             // 已结束取结果的 details，运行中取最新的进度快照（`tool_execution_update.partialResult.details`）。
             details = item.details ?: item.liveDetails,
             images = item.images,
+            argsComplete = item.args != null,
             isError = item.isError,
             expanded = expanded,
             isPartial = item.status == ToolStatus.Pending,
@@ -4293,6 +4308,43 @@ class PiSessionViewModel(app: Application) : AndroidViewModel(app) {
     /** 扩展自定义消息的渲染入口：没有渲染器 / 宿主不可达回 null，消息回落 markdown。 */
     val messageRenderer = MessageRenderer { item, expanded ->
         runCatching { messageRenderCache.render(item, expanded) }.getOrNull()
+    }
+
+    private val entryRenderCache = EntryRendererCache { item, expanded ->
+        val commands = session?.commands ?: throw IllegalStateException("no session")
+        commands.renderEntry(item.customType, item.key, item.data, expanded, panelColumns.takeIf { it > 0 } ?: 80)
+    }
+
+    /** 扩展自定义会话条目的渲染入口（`registerEntryRenderer`）：没有渲染器 / 宿主不可达回 null。 */
+    val entryRenderer = EntryRenderer { item, expanded ->
+        runCatching { entryRenderCache.render(item, expanded) }.getOrNull()
+    }
+
+    private val _entryRenderable = MutableStateFlow<Set<String>>(emptySet())
+
+    /** 有扩展渲染器的条目 customType：转录里只有这些 `custom` 条目会画出来（pi：没渲染器就不添加任何子组件）。 */
+    val entryRenderable: StateFlow<Set<String>> = _entryRenderable.asStateFlow()
+
+    private val markdownTransformCache = MarkdownTransformCache { text, type, id ->
+        val commands = session?.commands ?: throw IllegalStateException("no session")
+        commands.renderMarkdown(text, type, isStreaming = false, width = panelColumns.takeIf { it > 0 } ?: 80, messageId = id)
+    }
+
+    /** 已完成消息的 markdown 经扩展 transformer 改写；没有 transformer / 宿主不可达就原样返回。 */
+    val markdownTransform = MarkdownTransform { text, type, id ->
+        runCatching { markdownTransformCache.transform(text, type, id) }.getOrDefault(text)
+    }
+
+    /** 转录里新出现的 `custom` 条目类型各问宿主一次「有没有渲染器」，结果驱动 [entryRenderable]。 */
+    private fun probeEntryTypes(transcript: List<TranscriptItem>) {
+        val fresh = transcript.filterIsInstance<ExtensionEntry>()
+            .filter { !entryRenderCache.known(it.customType) }
+            .distinctBy { it.customType }
+        if (fresh.isEmpty()) return
+        viewModelScope.launch {
+            for (item in fresh) runCatching { entryRenderCache.render(item, false) }
+            _entryRenderable.value = fresh.map { it.customType }.filter(entryRenderCache::hasRenderer).toSet() + _entryRenderable.value
+        }
     }
 
     /** 工具卡的扩展渲染入口：宿主不可达 / 没有渲染器都回 null，卡片回落通用样式。 */

@@ -43,7 +43,11 @@
 | 扩展 CLI 标志（`--flag`） | 已接 | `session.open.flags`；查扩展声明了哪些：`sdk.call extensionRunner getFlags` |
 | 扩展的完整 UI（对话框、widget 行/组件、footer、header、`custom()`、通知、状态、标题、编辑器文本） | 已接 | `ui.*`；组件以「表面」呈现（ANSI 行），见 ui-design.md |
 | 扩展事件总线 | 已接 | `bus.*` |
-| 扩展注册的消息渲染器 | 已接 | `render.message` |
+| 扩展注册的消息渲染器 | 已接 | `render.message`（官方 `CustomMessageComponent`） |
+| 扩展工具渲染（含 `registerToolRenderer` 接管内置工具） | 已接 | `render.tool`（官方 `ToolExecutionComponent` + `resolveToolRenderers`） |
+| 自定义会话条目渲染器 `registerEntryRenderer` | 已接 | `render.entry`；转录里 `ExtensionEntry`，仅有渲染器的类型可见 |
+| markdown transformer `registerMarkdownTransformer` | 已接（仅已完成的消息；流式不套用） | `render.markdown`；pi 自带的 mermaid 字符画 transformer 手机不需要，未套用 |
+| 组件自己要求重绘（`requestRender`，动画/定时刷新） | 已接 | `render.invalidate` 事件 |
 | 包：列出 / 检查更新 | 已接 | `packages.list` / `packages.updates` |
 | 包：安装 / 卸载 / 更新 | **已接** | `packages.install/remove/update`，进度 `packages.progress`，同时只允许一个操作；装完不自动重载，由 App 调 `session.reload`。以下为旧说明： `sdk.call packageManager install/remove/update`；进度回调（`setProgressCallback`）没映射，**待接**一条 `packages.install` 命令带进度事件 |
 | 资源开关（启用/停用某个扩展、技能、模板、主题） | **已接** | `resources.list/toggle`（原 `pi-resources.mjs` 的逻辑进了宿主；清单 `resolve(onMissing→skip)`，开关复用 `pi config` 的 `ConfigSelectorComponent`，写出的规则与终端一致）。以下为旧说明： 现在靠 `pi-resources.mjs`。迁移：`packageManager.resolve()` + 设置的 `extensions/skills/prompts/themes` 过滤项，逻辑照抄 `pi-resources.mjs` 但改成直接调 SDK |

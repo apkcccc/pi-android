@@ -186,6 +186,54 @@ export function register(reg, { controller }) {
     return { lines: lines.map(String) };
   });
 
+  // 扩展用 `registerEntryRenderer` 给自己的 `custom` 会话条目（`appendEntry`）注册的渲染器：
+  // TUI 用 `CustomEntryComponent`，它不在 SDK 的公开导出里，所以按文件路径取同一个官方类
+  // （contract 守着这个路径）。没渲染器 / 渲染器没给内容 = 不画，和 pi 一样。
+  let customEntryComponent;
+  const loadCustomEntryComponent = async () => {
+    if (customEntryComponent) return customEntryComponent;
+    const file = join(controller.cfg.piDir ?? "", "dist", "modes", "interactive", "components", "custom-entry.js");
+    customEntryComponent = (await import(pathToFileURL(file).href)).CustomEntryComponent;
+    return customEntryComponent;
+  };
+  reg.add("render.entry", async (args) => {
+    const s = controller.requireSession();
+    const customType = str(args, "customType");
+    const renderer = s.extensionRunner.getEntryRenderer(customType);
+    if (!renderer) return { lines: null, reason: "no_renderer" };
+    officialTheme();
+    const CustomEntryComponent = await loadCustomEntryComponent();
+    const entry = { type: "custom", id: str(args, "id") || "entry", parentId: null, timestamp: new Date().toISOString(), customType, data: args.data };
+    const component = new CustomEntryComponent(entry, renderer, 0);
+    if (!component.hasContent()) return { lines: null, reason: "empty" };
+    component.setExpanded(Boolean(args.expanded));
+    return { lines: component.render(Number(args.width) || controller.surfaces.width).map(String) };
+  });
+
+  // 扩展用 `registerMarkdownTransformer` 改写 markdown（TUI 在 Assistant/UserMessageComponent 里逐条套用）。
+  // 与 TUI 同一条链：先 pi 自己的（mermaid，终端字符画，手机上不需要），再扩展的，按加载顺序。
+  reg.add("render.markdown", (args) => {
+    const s = controller.requireSession();
+    const transformers = s.extensionRunner.getMarkdownTransformers();
+    let text = str(args, "markdown");
+    if (!transformers.length) return { markdown: text, changed: false, count: 0 };
+    const context = {
+      messageType: ["user", "assistant", "assistant-thinking"].includes(args.messageType) ? args.messageType : "assistant",
+      isStreaming: Boolean(args.isStreaming),
+      availableWidth: Number(args.width) || controller.surfaces.width,
+      ...(typeof args.messageId === "string" ? { messageId: args.messageId } : {}),
+      ...(typeof args.timestamp === "string" ? { timestamp: args.timestamp } : {}),
+    };
+    for (const transform of transformers) {
+      try {
+        text = transform(text, context);
+      } catch (error) {
+        controller.hub.emit("host.log", { level: "warn", message: `markdown transformer failed: ${error?.message ?? error}` });
+      }
+    }
+    return { markdown: text, changed: text !== args.markdown, count: transformers.length };
+  });
+
   // 一个 toolCallId 对应一个官方组件（它持有 renderer state / lastComponent），封顶免得长会话无限长。
   const toolComponents = new Map();
   const componentFor = (id, name, def, callArgs, cwd) => {
